@@ -1,0 +1,27 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verdict:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # The firmware's engine and the backend's engine run the same vectors.
+      # If they ever disagree, the device and the dashboard disagree too.
+      - name: firmware engine (C)
+        run: make -C tests test
+
+      - name: backend engine (Python)
+        run: python3 backend/test_verdict.py
+
+      # Compiles ui.h against stub display headers and asserts nothing is drawn
+      # off the 128x64 panel.
+      - name: OLED layout
+        run: make -C tests ui

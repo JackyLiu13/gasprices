@@ -1,0 +1,21 @@
+# Shared test vectors for the verdict engine.
+# Both tests/test_verdict.cpp (firmware) and backend/test_verdict.py (backend)
+# read this file, so the two implementations can never silently diverge.
+#
+# Prices are tenths of a cent per litre. pred is pipe-separated, "-" = empty.
+# All cases assume gp_default_config(): threshold 15, low 20, high 80, cap 60, horizon 5.
+name,today,pred,window_lo,window_hi,age_minutes,tank,expect_verdict,expect_level,expect_days,expect_save
+jump_tomorrow_while_cheap,1489,1512|1499|1471|1468|1470,1441,1573,120,HALF,FILL_NOW,36,3,21
+cheaper_in_two_days,1520,1521|1495|1490|1492|1494,1441,1573,120,HALF,WAIT,59,2,30
+bottom_of_range,1450,1452|1455|1458|1460|1462,1441,1573,120,HALF,GREAT,6,0,0
+top_of_range_no_dip,1560,1562|1565|1560|1558|1559,1441,1573,120,HALF,EXPENSIVE,90,0,2
+fair_price,1500,1502|1500|1498|1499|1501,1441,1573,120,HALF,NEUTRAL,44,0,2
+tank_low_overrides_wait,1520,1521|1495|1490|1492|1494,1441,1573,120,LOW,FILL_NOW,59,0,30
+tank_full_is_patient,1500,1480|1478|1479|1481|1483,1441,1573,120,FULL,NEUTRAL,44,0,22
+tank_half_takes_the_dip,1500,1480|1478|1479|1481|1483,1441,1573,120,HALF,WAIT,44,1,22
+stale_data,1489,1512|1499|1471|1468|1470,1441,1573,3000,HALF,STALE,-1,0,0
+jump_but_already_expensive,1560,1590|1592|1594|1596|1598,1441,1573,120,HALF,EXPENSIVE,90,0,0
+flat_window_no_signal,1500,1500|1500|1500|1500|1500,1500,1500,120,HALF,NEUTRAL,-1,0,0
+today_below_window,1430,1432|1433|1434|1435|1436,1441,1573,120,HALF,GREAT,0,0,0
+no_predictions_level_only,1450,-,1441,1573,120,HALF,GREAT,6,0,0
+no_clock_age_unknown,1450,1452|1455|1458|1460|1462,1441,1573,-1,HALF,GREAT,6,0,0

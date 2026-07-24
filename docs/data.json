@@ -1,0 +1,31 @@
+{
+ "schema": 1,
+ "station": "Richmond Hill, ON",
+ "updated": "2026-07-24T19:23:46Z",
+ "epoch": 1784921026,
+ "today_cad": 1788,
+ "pred": [
+  1798,
+  1802,
+  1804,
+  1804,
+  1805
+ ],
+ "window_lo": 1788,
+ "window_hi": 1788,
+ "hist": [
+  1788
+ ],
+ "meta": {
+  "level_source": "carried",
+  "days_of_history": 1,
+  "observed_days": 0,
+  "margin_cad_l": 0.16,
+  "wholesale_cad_l": 1.2114,
+  "target_cad_l": 1.8048,
+  "rbob_usd_gal": 3.2555,
+  "usd_cad": 1.4086
+ },
+ "verdict_hint": "NEUTRAL",
+ "reason_hint": "Fair price"
+}

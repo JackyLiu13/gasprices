@@ -1,0 +1,54 @@
+name: update price data
+
+on:
+  schedule:
+    # UTC. 09:30 UTC ~ 05:30 Toronto (EDT), 20:30 UTC ~ 16:30 — after the
+    # overnight reset and again after the afternoon moves. GitHub runs cron on a
+    # best-effort basis and can be 5-15 minutes late; the firmware doesn't care.
+    - cron: "30 9 * * *"
+    - cron: "30 20 * * *"
+  workflow_dispatch:
+    inputs:
+      local_price:
+        description: "Pump price you actually saw today, $/L (optional)"
+        required: false
+
+# Never let two runs write history.csv at once.
+concurrency:
+  group: update-price-data
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # No pip install: backend/ is standard library only, on purpose.
+
+      - name: Verify the decision engine still agrees with the firmware
+        run: python3 backend/test_verdict.py
+
+      - name: Build data.json
+        env:
+          LOCAL_PRICE_OVERRIDE: ${{ github.event.inputs.local_price }}
+        run: python3 backend/build.py
+
+      - name: Commit if anything changed
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/data.json backend/history.csv
+          if git diff --staged --quiet; then
+            echo "no change"
+          else
+            SUMMARY=$(python3 -c "import json; d = json.load(open('docs/data.json')); print('%.3f/L %s' % (d['today_cad'] / 1000, d['verdict_hint']))")
+            git commit -m "data: $(date -u +%F) $SUMMARY"
+            git push
+          fi

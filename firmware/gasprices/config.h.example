@@ -1,0 +1,39 @@
+// Copy to config.h and fill in. config.h is gitignored — keep your WiFi
+// password out of the repo.
+#ifndef GP_CONFIG_H
+#define GP_CONFIG_H
+
+#define WIFI_SSID  "your-network"
+#define WIFI_PASS  "your-password"
+
+// Where build.py publishes. GitHub Pages (https://USER.github.io/gasprices/data.json)
+// or raw.githubusercontent.com both work; Pages has friendlier caching.
+#define DATA_URL   "https://YOURUSER.github.io/gasprices/data.json"
+
+// --- Hardware ---------------------------------------------------------------
+// I2C pins for the SSD1306. Defaults below are the ESP32-C6-DevKitC-1 silkscreen
+// SDA/SCL; check your board — the C6 matrix can route I2C to any GPIO.
+#define I2C_SDA_PIN   6
+#define I2C_SCL_PIN   7
+#define OLED_ADDR     0x3C   // 0x3D on some 128x64 modules
+
+// BOOT button on most C6 devkits: press to cycle tank state FULL -> HALF -> LOW.
+// Active low, internal pull-up. GPIO9 is a strapping pin, so if you want the
+// button to also wake the board from deep sleep, move it to a free GPIO (e.g. 4).
+#define TANK_BUTTON_PIN  9
+
+// --- Power ------------------------------------------------------------------
+// 0 = stay awake, refresh on a timer (use when USB-powered; screen stays live).
+// 1 = deep sleep between refreshes (battery). The SSD1306 holds its framebuffer
+//     while the ESP32 sleeps, so the last verdict stays on screen the whole time.
+#define USE_DEEP_SLEEP  0
+
+// Local refresh times, 24 h. Ontario pump prices reset overnight and retailers
+// often move again in the afternoon, so twice a day is plenty.
+#define REFRESH_HOUR_AM  5
+#define REFRESH_HOUR_PM  16
+#define REFRESH_MINUTE   30
+
+#define TZ_INFO  "EST5EDT,M3.2.0,M11.1.0"   // America/Toronto
+
+#endif  // GP_CONFIG_H

@@ -1,0 +1,10 @@
+# WiFi credentials live here — never commit
+firmware/gasprices/config.h
+
+# host test binaries
+tests/test_verdict
+tests/test_ui
+
+__pycache__/
+*.pyc
+.DS_Store
