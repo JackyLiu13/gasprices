@@ -38,12 +38,12 @@ def _get_json(url: str, attempts: int = 3) -> dict:
 
 # --- RBOB gasoline futures, USD per US gallon ------------------------------
 
-def rbob_history(days: int = 40) -> list[tuple[str, float]]:
+def rbob_history(days: int = 40, period: str = "3mo") -> list[tuple[str, float]]:
     """[(YYYY-MM-DD, close_usd_per_gal), ...] oldest first, from Yahoo Finance.
 
-    Unofficial endpoint — no key, but no SLA either. If it starts 429ing, swap in
-    EIA's series (free key, https://api.eia.gov, series RGC or EMM_EPMR_PTE_NUS_DPG)
-    behind this same signature.
+    `period` is a Yahoo range string (1mo/3mo/6mo/1y/2y); backfill.py asks for a
+    year. Unofficial endpoint — no key, but no SLA either. If it starts 429ing,
+    swap in EIA's series (free key, https://api.eia.gov) behind this signature.
     """
     override = os.environ.get("RBOB_OVERRIDE")
     if override:
@@ -52,7 +52,7 @@ def rbob_history(days: int = 40) -> list[tuple[str, float]]:
     # The front-month RBOB contract is "RB=F". Note it is NOT "RBOB=F", which
     # 404s. `range` must be a Yahoo period string (1mo/3mo/...), not a day count.
     url = ("https://query1.finance.yahoo.com/v8/finance/chart/RB%3DF"
-           "?range=3mo&interval=1d")
+           f"?range={period}&interval=1d")
     data = _get_json(url)
     try:
         res = data["chart"]["result"][0]
@@ -86,6 +86,64 @@ def usd_cad() -> float:
 
     data = _get_json("https://open.er-api.com/v6/latest/USD")
     return float(data["rates"]["CAD"])
+
+
+def fx_series(start: str, end: str) -> dict[str, float]:
+    """{YYYY-MM-DD: usd_cad} over a date range, for historical backfill.
+
+    Applying today's FX to a year of RBOB history would be worth several cents
+    per litre of error — USD/CAD moves far more over a year than over the month
+    build.py covers. Weekends and holidays are absent; callers forward-fill.
+    """
+    data = _get_json(f"https://api.frankfurter.app/{start}..{end}?from=USD&to=CAD")
+    return {d: float(v["CAD"]) for d, v in data.get("rates", {}).items()}
+
+
+# --- Ontario official weekly retail survey ---------------------------------
+
+# data.ontario.ca, "Fuels price survey information". Weekly regular-unleaded
+# pump prices in cents/L for 10 Ontario markets, back to 1990, updated Mondays,
+# Open Government Licence - Ontario. This is a published open dataset, so no
+# scraping and no bot-protection to fight.
+ONTARIO_FUEL_CSV = "https://ontario.ca/v1/files/fuel-prices/fueltypesall.csv"
+
+# Richmond Hill sits on Yonge Street, which is roughly the line the survey uses
+# to split Toronto East from Toronto West, so average the two.
+GTA_COLUMNS = ("Toronto East/Est", "Toronto West/Ouest")
+
+
+def ontario_retail_survey(limit: int | None = None) -> list[tuple[str, float]]:
+    """[(YYYY-MM-DD, dollars_per_litre), ...] oldest first, regular unleaded."""
+    import csv
+    import io
+
+    req = urllib.request.Request(ONTARIO_FUEL_CSV, headers={"User-Agent": UA})
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            text = r.read().decode("utf-8-sig", errors="replace")
+    except (urllib.error.URLError, TimeoutError) as e:
+        raise FetchError(f"{ONTARIO_FUEL_CSV}: {e}") from e
+
+    out: list[tuple[str, float]] = []
+    for row in csv.DictReader(io.StringIO(text)):
+        date = (row.get("Date") or "").strip()
+        if len(date) != 10 or "Regular" not in (row.get("Fuel Type") or ""):
+            continue
+        vals = []
+        for col in GTA_COLUMNS:
+            try:
+                cents = float((row.get(col) or "").strip())
+            except ValueError:
+                continue
+            if cents > 0:                      # 0 means "not surveyed"
+                vals.append(cents)
+        if vals:
+            out.append((date, sum(vals) / len(vals) / 100.0))   # cents -> dollars
+
+    if not out:
+        raise FetchError("Ontario survey returned no regular-unleaded rows")
+    out.sort()
+    return out[-limit:] if limit else out
 
 
 # --- Local retail price ----------------------------------------------------

@@ -97,11 +97,23 @@ characters — one panel line — and the test fails if one grows past it.)
 
 ## The data
 
-| Input | Source | Difficulty |
-|-------|--------|-----------|
-| RBOB gasoline futures | Yahoo `RB=F` (unofficial, no key) | easy |
-| USD/CAD | frankfurter.app, er-api.com fallback | easy |
-| Local pump price | **you** | the actual problem |
+| Input | Source | Cadence |
+|-------|--------|---------|
+| RBOB gasoline futures | Yahoo `RB=F` (unofficial, no key) | daily |
+| USD/CAD | frankfurter.app, er-api.com fallback | daily |
+| GTA pump price | [Ontario Fuels Price Survey](https://data.ontario.ca/en/dataset/fuels-price-survey-information) (official open data) | weekly, Mondays |
+| Your pump price | `log_price.py` | whenever you fill up |
+
+The GTA number comes from Ontario's official weekly survey rather than
+GasBuddy: it's a published open dataset under the Open Government Licence, goes
+back to 1990, needs no key, and has no bot-protection to fight. Richmond Hill
+sits on Yonge Street — roughly the line the survey uses to split Toronto East
+from Toronto West — so `sources.py` averages the two markets.
+
+The catch is cadence. It updates Mondays, so it anchors the *level* weekly
+while the RBOB model carries the *direction* daily. `build.py` rolls the newest
+survey point forward to today through the same passthrough model rather than
+pretending a four-day-old number is today's price.
 
 Wholesale → pump is a fixed stack ([model.py](backend/model.py)):
 
@@ -113,16 +125,33 @@ retail    = (wholesale + margin + 0.10 fed + 0.09 ON + carbon) * 1.13 HST
 Verify those tax constants before trusting output — rates move, and the federal
 consumer carbon charge on gasoline was removed in April 2025.
 
-`margin` is the one number you don't guess. Log what you actually pay:
+`margin` is the one number you don't guess, and **it is not a constant**.
+Measured against a year of the Ontario survey, the GTA margin ran ~27 ¢/L in
+late 2025 and fell to ~15 ¢/L by mid-2026:
 
-```bash
-python3 backend/log_price.py 1.489
+```
+2025-07-28 .. 2025-10-20   median 0.2743
+2025-10-27 .. 2026-01-19   median 0.2821
+2026-01-26 .. 2026-04-20   median 0.2596
+2026-04-27 .. 2026-07-20   median 0.1515
 ```
 
-After 5 observations `calibrate_margin()` takes the median implied margin from
-your own receipts and the guessed constant stops mattering. This is also what
-anchors the *level* — the model gives direction for free, but only your logged
-prices tell it where the pump actually sits.
+So calibration uses a **90-day trailing window**, and it's time-based rather
+than row-based on purpose: backfilled survey rows are weekly while live rows are
+daily, so "last 21 rows" would mean five months in one case and three weeks in
+the other. Using the full-year median instead would run the model ~11 ¢/L high.
+On the current data the 90-day window fits the survey to a median error of
+1.87 ¢/L, against 3.40 ¢/L for the full-span median.
+
+Log what you actually pay — your own station beats a regional average:
+
+```bash
+python3 backend/log_price.py 1.819
+```
+
+Priority is always: your logged price → Ontario survey → our model.
+Calibration never uses the model's own output, or the margin would be fitting
+to a price the margin produced.
 
 The forward model is deliberately boring: today's pump price hasn't finished
 absorbing where wholesale already is, so each day closes a fraction of the gap
@@ -149,12 +178,21 @@ device. `verdict_hint` is for you; the firmware computes its own.
 ## Setup
 
 **1. Backend.** Push to GitHub, enable Pages on `main` / `/docs`. The Action
-runs at 05:30 and 16:30 Toronto time and commits `docs/data.json`. Test locally:
+runs at 05:30 and 16:30 Toronto time and commits `docs/data.json`.
+
+Seed the history first, or the window is empty, level% is meaningless, and the
+device says NEUTRAL for a month while it learns:
 
 ```bash
+python3 backend/backfill.py          # a year of real GTA prices, one shot
 python3 backend/build.py --dry-run
 RBOB_OVERRIDE=3.25 USDCAD_OVERRIDE=1.41 python3 backend/build.py --dry-run  # offline
 ```
+
+`backfill.py` deliberately does not interpolate weekly points into fake daily
+ones — linear interpolation between two weekly prices can never move
+`window_lo`/`window_hi`, so it would add rows without adding information. Real
+daily rows accumulate from `build.py` going forward.
 
 **2. Firmware.** Arduino IDE, ESP32 core ≥ 3.0 (C6 support landed there).
 Board: *ESP32C6 Dev Module*. Libraries: ArduinoJson v7, Adafruit SSD1306,
@@ -211,8 +249,9 @@ firmware/gasprices/
   config.h.example  copy to config.h
 backend/
   build.py          orchestrator: fetch -> model -> docs/data.json
+  backfill.py       one-shot seed from Ontario's weekly survey
   model.py          tax stack, passthrough model, margin calibration
-  sources.py        RBOB, FX, local price (stdlib only)
+  sources.py        RBOB, FX, Ontario survey, local price (stdlib only)
   verdict.py        Python mirror of verdict.h
   backtest.py       replay history, sweep thresholds
   log_price.py      record what you actually paid
@@ -229,8 +268,13 @@ tests/
   drop a replacement behind `sources.rbob_history()` — EIA has a free keyed API
   with the same shape. `build.py` exits non-zero rather than publish a bad
   number, so a broken source leaves the last good file in place.
-- FX is applied at today's rate across the whole RBOB history. Over a month
-  USD/CAD drifts ~1 %, well under a cent per litre.
+- `build.py` applies today's FX across its one-month RBOB window (~1 % drift,
+  under a cent per litre). `backfill.py` uses real historical FX, because over a
+  year that shortcut would cost several cents.
+- The Ontario survey is a regional average of two large markets, so it misses
+  station-level spread and intra-week spikes. Until enough daily rows
+  accumulate, the sparkline is coarse and `window_lo`/`window_hi` understate
+  true daily volatility. Logging your own fills is the fix.
 - GitHub disables scheduled workflows after 60 days of repo inactivity.
 - The local price is still the weak link. Manual logging works and needs no
   infrastructure; if you'd rather scrape a GTA next-day tracker, that parser

@@ -34,7 +34,7 @@ HORIZON = 5           # len(pred)
 STATION = "Richmond Hill, ON"
 
 FIELDS = ["date", "rbob_usd_gal", "usd_cad", "wholesale_cad_l",
-          "retail_model", "retail_actual", "margin"]
+          "retail_model", "retail_survey", "retail_actual", "margin"]
 
 
 def load_history() -> list[dict]:
@@ -62,8 +62,17 @@ def fnum(row: dict, key: str) -> float | None:
 
 
 def best_retail(row: dict) -> float | None:
-    """What we believe the pump actually was: a logged price beats the model."""
-    return fnum(row, "retail_actual") or fnum(row, "retail_model")
+    """What we believe the pump actually was, most trustworthy source first:
+    a price you logged, then Ontario's weekly survey, then our own model."""
+    return (fnum(row, "retail_actual")
+            or fnum(row, "retail_survey")
+            or fnum(row, "retail_model"))
+
+
+def observed_retail(row: dict) -> float | None:
+    """Real measurements only — never our own model, or calibration would be
+    fitting the margin to a price the margin produced."""
+    return fnum(row, "retail_actual") or fnum(row, "retail_survey")
 
 
 def main() -> int:
@@ -83,54 +92,114 @@ def main() -> int:
     # FX is applied at today's rate across the whole RBOB series. Over a month
     # USD/CAD drifts ~1%, i.e. under a cent per litre — well inside the noise
     # this model already carries, and it saves a second historical API.
+    # (backfill.py does use historical FX; over a year the drift is not small.)
     wholesale_series = [model.wholesale_cad_per_litre(px, fx) for _, px in rbob]
     wholesale_today = wholesale_series[-1]
     wholesale_smooth = model.ema(wholesale_series[-model.WHOLESALE_EMA_DAYS * 3:])
 
-    # 2. Calibrate the margin against pump prices you actually logged.
-    pairs: list[tuple[float, float]] = []
-    for row in history:
-        actual, w = fnum(row, "retail_actual"), fnum(row, "wholesale_cad_l")
-        if actual and w:
-            pairs.append((actual, w))
-    margin = model.calibrate_margin(pairs)
+    # Smoothed wholesale as of each market close, so a survey row dated last
+    # Monday is paired with last Monday's wholesale rather than today's.
+    ema_at: dict[str, float] = {}
+    k = 2.0 / (model.WHOLESALE_EMA_DAYS + 1.0)
+    running: float | None = None
+    for (date, _), w in zip(rbob, wholesale_series):
+        running = w if running is None else w * k + running * (1.0 - k)
+        ema_at[date] = running
+    market_days = sorted(ema_at)
 
-    # 3. Equilibrium price implied by where wholesale already is.
+    def wholesale_on(date: str) -> float | None:
+        earlier = [d for d in market_days if d <= date]
+        return ema_at[earlier[-1]] if earlier else None
+
+    # 2. Refresh the Ontario weekly survey. It only moves on Mondays, so most
+    #    runs are a no-op, but it re-anchors the level every week for free.
+    survey: dict[str, float] = {}
+    try:
+        for date, px in sources.ontario_retail_survey(limit=60):
+            survey[date] = px
+    except sources.FetchError as e:
+        print(f"warning: Ontario survey unavailable ({e})", file=sys.stderr)
+
+    for row in history:
+        if not (row.get("retail_survey") or "").strip() and row["date"] in survey:
+            row["retail_survey"] = f"{survey[row['date']]:.4f}"
+    known = {r["date"] for r in history}
+    for date, px in survey.items():
+        if date not in known and date <= today:
+            history.append({"date": date, "retail_survey": f"{px:.4f}"})
+    history.sort(key=lambda r: r["date"])
+
+    # A survey row is useless for calibration without the matching wholesale.
+    for row in history:
+        if not (row.get("wholesale_cad_l") or "").strip():
+            w = wholesale_on(row["date"])
+            if w is not None:
+                row["wholesale_cad_l"] = f"{w:.4f}"
+
+    # 3. Calibrate the margin against real measurements only.
+    obs: list[tuple[str, float, float]] = []
+    for row in history:
+        px, w = observed_retail(row), fnum(row, "wholesale_cad_l")
+        if px and w:
+            obs.append((row["date"], px, w))
+    margin = model.calibrate_margin(obs)
+
+    # 4. Equilibrium price implied by where wholesale already is.
     target = model.retail_from_wholesale(wholesale_smooth, margin)
 
-    # 4. Today's level: a logged price wins; else carry yesterday forward one
-    #    passthrough step; else (cold start) fall back to the model outright.
+    # 5. Today's level. Take the freshest real observation and roll it forward
+    #    to today through the same passthrough model, rather than treating a
+    #    four-day-old survey number as if it were today's price.
     local = sources.local_retail_hint()
+    anchor_date, anchor_px = None, None
+    for row in history:
+        px = observed_retail(row)
+        if px:
+            anchor_date, anchor_px = row["date"], px
+
     if local is not None:
         today_retail, level_src = local, "observed"
+    elif anchor_px is not None:
+        lag = (dt.date.fromisoformat(today) - dt.date.fromisoformat(anchor_date)).days
+        today_retail = (anchor_px if lag <= 0
+                        else model.predict(anchor_px, target, horizon=lag)[-1])
+        level_src = f"anchored({anchor_date}, +{lag}d)"
     else:
-        prev = best_retail(history[-1]) if history else None
-        if prev is not None:
-            today_retail = model.predict(prev, target, horizon=1)[0]
-            level_src = "carried"
-        else:
-            today_retail, level_src = target, "modelled"
+        today_retail, level_src = target, "modelled"
 
     # 5. Forward curve.
     pred = model.predict(today_retail, target, horizon=args.horizon)
 
     # 6. Upsert today's row, then take the rolling window from history.
+    prior_today = next((r for r in history if r["date"] == today), {})
     row_today = {
         "date": today,
         "rbob_usd_gal": f"{rbob_today:.4f}",
         "usd_cad": f"{fx:.4f}",
         "wholesale_cad_l": f"{wholesale_smooth:.4f}",
         "retail_model": f"{today_retail:.4f}",
-        "retail_actual": f"{local:.3f}" if local is not None else "",
+        "retail_survey": prior_today.get("retail_survey", "")
+                         or (f"{survey[today]:.4f}" if today in survey else ""),
+        # Never drop a price logged earlier today just because this run had no
+        # LOCAL_PRICE_OVERRIDE set.
+        "retail_actual": (f"{local:.3f}" if local is not None
+                          else prior_today.get("retail_actual", "")),
         "margin": f"{margin:.4f}",
     }
     history = [r for r in history if r["date"] != today] + [row_today]
     history.sort(key=lambda r: r["date"])
 
-    window_vals = [v for v in (best_retail(r) for r in history[-WINDOW_DAYS:]) if v]
+    # Date-based, not row-based: backfilled survey rows are weekly, so slicing
+    # the last 30 *rows* would quietly reach back seven months and blow the
+    # window wide enough to make level% meaningless.
+    def since(days: int) -> list[dict]:
+        cutoff = (dt.date.fromisoformat(today) - dt.timedelta(days=days)).isoformat()
+        return [r for r in history if r["date"] >= cutoff]
+
+    window_vals = [v for v in (best_retail(r) for r in since(WINDOW_DAYS)) if v]
     lo, hi = min(window_vals), max(window_vals)
     spark = [model.to_tenths(v) for v in
-             [v for v in (best_retail(r) for r in history[-SPARK_DAYS:]) if v]]
+             (best_retail(r) for r in since(SPARK_DAYS)) if v]
 
     now = dt.datetime.now(dt.timezone.utc).replace(microsecond=0)
     payload = {
@@ -147,7 +216,7 @@ def main() -> int:
         "meta": {
             "level_source": level_src,
             "days_of_history": len(history),
-            "observed_days": len(pairs),
+            "observed_days": len(obs),
             "margin_cad_l": round(margin, 4),
             "wholesale_cad_l": round(wholesale_today, 4),
             "target_cad_l": round(target, 4),

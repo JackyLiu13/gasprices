@@ -1,31 +1,35 @@
 {
  "schema": 1,
  "station": "Richmond Hill, ON",
- "updated": "2026-07-24T21:34:05Z",
- "epoch": 1784928845,
- "today_cad": 1800,
+ "updated": "2026-07-24T21:44:42Z",
+ "epoch": 1784929482,
+ "today_cad": 1819,
  "pred": [
-  1805,
-  1807,
+  1815,
+  1812,
+  1810,
   1808,
-  1808,
-  1808
+  1807
  ],
- "window_lo": 1800,
- "window_hi": 1800,
+ "window_lo": 1584,
+ "window_hi": 1819,
  "hist": [
-  1800
+  1584,
+  1634,
+  1651,
+  1792,
+  1819
  ],
  "meta": {
-  "level_source": "carried",
-  "days_of_history": 1,
-  "observed_days": 0,
-  "margin_cad_l": 0.16,
+  "level_source": "anchored(2026-07-24, +0d)",
+  "days_of_history": 61,
+  "observed_days": 53,
+  "margin_cad_l": 0.1553,
   "wholesale_cad_l": 1.2177,
-  "target_cad_l": 1.8084,
+  "target_cad_l": 1.8031,
   "rbob_usd_gal": 3.2725,
   "usd_cad": 1.4086
  },
- "verdict_hint": "NEUTRAL",
- "reason_hint": "Fair price"
+ "verdict_hint": "EXPENSIVE",
+ "reason_hint": "High, no dip coming"
 }

@@ -6,6 +6,7 @@ converted to tenths of a cent for the JSON the ESP32 eats.
 
 from __future__ import annotations
 
+import datetime as dt
 import statistics
 
 LITRES_PER_US_GAL = 3.785411784
@@ -19,9 +20,20 @@ FEDERAL_EXCISE = 0.10
 ONTARIO_GAS_TAX = 0.09
 CARBON_CHARGE = 0.00
 
-# Refining + wholesale + retail margin + freight. This is the one number you do
-# NOT guess: calibrate_margin() re-derives it from prices you actually logged.
-DEFAULT_MARGIN = 0.16
+# Refining + wholesale + retail margin + freight. Cold-start guess only —
+# calibrate_margin() re-derives it from real prices as soon as it has any.
+#
+# This is NOT a constant of nature. Measured against Ontario's weekly survey,
+# the GTA margin ran ~27 c/L in late 2025 and fell to ~15 c/L by mid-2026. Any
+# fixed value goes stale, which is why the calibration window below is short.
+DEFAULT_MARGIN = 0.15
+
+# Only look this far back when calibrating. Long enough to average out noise,
+# short enough to track the drift above. Deliberately time-based, not row-based:
+# backfilled survey rows are weekly while live rows are daily, so "last N rows"
+# would silently mean five months of history in one case and three weeks in the
+# other.
+MARGIN_WINDOW_DAYS = 90
 
 # Rockets and feathers: retail chases a wholesale increase much faster than it
 # passes a decrease along. These are the fraction of the remaining gap closed
@@ -67,14 +79,20 @@ def ema(values: list[float], days: int = WHOLESALE_EMA_DAYS) -> float:
     return out
 
 
-def calibrate_margin(pairs: list[tuple[float, float]], window: int = 21,
+def calibrate_margin(observations: list[tuple[str, float, float]],
+                     days: int = MARGIN_WINDOW_DAYS,
                      fallback: float = DEFAULT_MARGIN) -> float:
-    """pairs = [(observed_retail, smoothed_wholesale), ...] oldest first.
+    """observations = [(YYYY-MM-DD, observed_retail, smoothed_wholesale), ...].
 
     Median (not mean) so one mistyped pump price can't drag the whole model.
-    Needs ~5 observations before it beats the hand-set default.
+    Needs 5 observations inside the window before it beats the hand-set default.
     """
-    recent = pairs[-window:]
+    if not observations:
+        return fallback
+
+    newest = dt.date.fromisoformat(max(d for d, _, _ in observations))
+    cutoff = (newest - dt.timedelta(days=days)).isoformat()
+    recent = [(r, w) for d, r, w in observations if d >= cutoff]
     if len(recent) < 5:
         return fallback
     return statistics.median(implied_margin(r, w) for r, w in recent)
