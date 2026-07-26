@@ -35,11 +35,23 @@ DEFAULT_MARGIN = 0.15
 # other.
 MARGIN_WINDOW_DAYS = 90
 
-# Rockets and feathers: retail chases a wholesale increase much faster than it
-# passes a decrease along. These are the fraction of the remaining gap closed
-# per day. Tune against real outcomes (see README phase 4).
-PASSTHROUGH_UP = 0.60
-PASSTHROUGH_DOWN = 0.25
+# Fraction of the gap to equilibrium closed per day.
+#
+# These started as a rockets-and-feathers asymmetry (up fast, down slow). That
+# turned out to be wrong here, and wrong for an instructive reason: measured
+# against a *trailing* margin, "up" gaps appeared to close only 40% per week.
+# But a trailing margin lags a drifting one, biasing the target +1.74 c/L high
+# and manufacturing upward gaps that were never real. Recomputed against a
+# centered (unbiased) margin, the asymmetry vanishes and full convergence wins
+# in both directions: 7-day MAE 3.45 c/L up / 3.55 down at weight 1.0, versus
+# 4.18 / 3.76 for assuming no move at all.
+#
+# So: symmetric, and fast. Weekly survey data cannot resolve the daily rate any
+# further — anything above ~0.35/day looks complete after 7 days — but a spot
+# check (1.819 -> 1.799 over 2 days, against a target of 1.7987) is consistent
+# with this. 0.5 closes 75% in two days and 99% in seven.
+PASSTHROUGH_UP = 0.50
+PASSTHROUGH_DOWN = 0.50
 
 # Wholesale moves lead the pump by a couple of days; smooth to that timescale.
 WHOLESALE_EMA_DAYS = 3

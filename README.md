@@ -154,10 +154,30 @@ Calibration never uses the model's own output, or the margin would be fitting
 to a price the margin produced.
 
 The forward model is deliberately boring: today's pump price hasn't finished
-absorbing where wholesale already is, so each day closes a fraction of the gap
-toward equilibrium — 60 % on the way up, 25 % on the way down. Rockets and
-feathers. No futures curve needed, and it answers the only question the engine
-asks: is a cheaper day coming, and how soon?
+absorbing where wholesale already is, so each day closes a fixed fraction of the
+gap toward equilibrium.
+
+That fraction started as a rockets-and-feathers asymmetry (60 % up, 25 % down)
+and **the data rejected it** — for an instructive reason. Measured against a
+*trailing* margin, upward gaps appeared to close only 40 % per week. But a
+trailing margin lags a drifting one, biasing the target **+1.74 ¢/L high** and
+manufacturing upward gaps that were never real. Against a centered, unbiased
+margin the asymmetry disappears entirely and full convergence wins both ways:
+
+| 7-day weight | MAE up | MAE down |
+|---|---|---|
+| 0.0 (price won't move) | 4.18 ¢/L | 3.76 ¢/L |
+| 1.0 (fully at equilibrium) | **3.45 ¢/L** | **3.55 ¢/L** |
+
+So the rates are now symmetric at 0.50/day. Weekly data can't resolve the daily
+rate further — anything above ~0.35/day looks complete after 7 days.
+
+**Be honest about what this buys you.** Beating "assume no move" by ~0.5 ¢/L at a
+7-day horizon is a weak edge, and when today's price already sits at
+equilibrium, `pred[]` comes back flat and carries no directional information at
+all. When that happens `daysToWait` never fires and the verdict is driven
+entirely by the level signal — which is the honest answer, not a bug. Real
+forward skill would need the RBOB futures curve, which this doesn't model.
 
 ### JSON contract
 
