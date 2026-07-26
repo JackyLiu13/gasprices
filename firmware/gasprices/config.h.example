@@ -11,10 +11,16 @@
 #define DATA_URL   "https://YOURUSER.github.io/gasprices/data.json"
 
 // --- Hardware ---------------------------------------------------------------
-// I2C pins for the SSD1306. Defaults below are the ESP32-C6-DevKitC-1 silkscreen
-// SDA/SCL; check your board — the C6 matrix can route I2C to any GPIO.
+// I2C pins for the SSD1306. These are passed straight to Wire.begin(), and the
+// C6 routes I2C through a GPIO matrix, so any free pin works — wire the display
+// to whatever you set here. (For reference, the Arduino core's generic esp32c6
+// variant calls GPIO23/22 SDA/SCL and GPIO6/7 SDA1/SCL1; that only matters if
+// you call Wire.begin() with no arguments, which this sketch never does.)
+// Avoid GPIO4/5/8/9/15 (strapping) and GPIO24-30 (SPI flash).
 #define I2C_SDA_PIN   6
 #define I2C_SCL_PIN   7
+
+// Run firmware/i2c_scan to find this if you don't know it.
 #define OLED_ADDR     0x3C   // 0x3D on some 128x64 modules
 
 // BOOT button on most C6 devkits: press to cycle tank state FULL -> HALF -> LOW.

@@ -214,20 +214,20 @@ ones — linear interpolation between two weekly prices can never move
 `window_lo`/`window_hi`, so it would add rows without adding information. Real
 daily rows accumulate from `build.py` going forward.
 
-**2. Firmware.** Arduino IDE, ESP32 core ≥ 3.0 (C6 support landed there).
-Board: *ESP32C6 Dev Module*. Libraries: ArduinoJson v7, Adafruit SSD1306,
-Adafruit GFX. Then:
+**2. Firmware.** See **[INSTALL.md](INSTALL.md)** for the full walkthrough —
+library versions, board settings, wiring, and a troubleshooting table keyed to
+the sketch's actual serial output.
 
-```bash
-cp firmware/gasprices/config.h.example firmware/gasprices/config.h
-```
+The short version: Arduino IDE with ESP32 core ≥ 3.0, board *ESP32C6 Dev
+Module*, **USB CDC On Boot → Enabled** (its default of Disabled makes the Serial
+Monitor silent on a native-USB board, which looks exactly like a dead device).
+Libraries: ArduinoJson v7, Adafruit SSD1306, Adafruit GFX. Copy
+`config.h.example` to `config.h`, fill in WiFi and your Pages URL — it's
+gitignored.
 
-Fill in WiFi and your Pages URL. `config.h` is gitignored.
-
-**3. Wiring.** SSD1306 over I²C — VCC→3V3, GND→GND, SDA→GPIO6, SCL→GPIO7
-(check your board's silkscreen; the C6 can route I²C anywhere). The RGB LED is
-onboard. The BOOT button (GPIO9) cycles the tank state; hold it >1 s to force a
-refresh.
+Wiring is SSD1306 over I²C: VCC→3V3, GND→GND, SDA→GPIO6, SCL→GPIO7. Run
+`firmware/i2c_scan` if you don't know the display's address. The BOOT button
+(GPIO9) cycles tank state; hold >1 s to force a refresh.
 
 Set `USE_DEEP_SLEEP 1` for battery. The SSD1306 holds its framebuffer while the
 ESP32 sleeps, so the last verdict stays on screen the whole time — but if it's
