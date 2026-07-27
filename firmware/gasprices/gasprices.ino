@@ -48,7 +48,6 @@ RTC_DATA_ATTR static struct {
   // station, so this is the label for the number, not a second number.
   char     bestLabel[20];
   int32_t  bestSave;       // tenths of a cent vs the cheapest "regular" station
-  int32_t  bestOffset;     // this station's offset from the regional benchmark
   bool     bestConfident;
   int32_t  regularPrice;   // what you'd pay at your usual station, 0 = unknown
 
@@ -181,7 +180,6 @@ static bool fetchData() {
   strncpy(cache.bestLabel, label, sizeof cache.bestLabel - 1);
   cache.bestLabel[sizeof cache.bestLabel - 1] = '\0';
   cache.bestSave = best["save"] | 0;
-  cache.bestOffset = best["offset"] | 0;
   cache.bestConfident = best["confident"] | false;
   cache.regularPrice = doc["regular"]["price"] | 0;
 
@@ -199,15 +197,6 @@ static bool fetchData() {
     cache.stationCount++;
   }
   if (gStationIdx >= cache.stationCount) gStationIdx = 0;
-
-  // A feed that lists stations but omits best.offset would otherwise leave
-  // bestOffset at 0 and shift every price by the full offset. today_cad is
-  // priced at the cheapest station and the list is sorted cheapest first, so
-  // entry 0 is the correct reference.
-  if (!best["offset"].is<int32_t>() && cache.stationCount > 0) {
-    cache.bestOffset = cache.stations[0].offset;
-    Serial.println("data: best.offset missing, using cheapest station's offset");
-  }
 
   Serial.printf("data: today=%ld pred=%u hist=%u lo=%ld hi=%ld\n",
                 (long)cache.today, cache.predLen, cache.histLen,
@@ -247,7 +236,12 @@ static void decideAndRender() {
 
   if (cache.stationCount > 0 && gStationIdx < cache.stationCount) {
     const auto &st = cache.stations[gStationIdx];
-    shift      = st.offset - cache.bestOffset;
+    // Derive the shift from the station price itself, not from the difference
+    // of two offsets. Offsets and prices are each rounded to tenths
+    // independently, so the offset route disagrees with the published price by
+    // 0.1c on about a fifth of stations. This way the big number on screen is
+    // exactly what the backend computed, by construction.
+    shift      = st.price - cache.today;
     label      = st.label;
     shownPrice = st.price;
     confident  = st.observations >= 3;
