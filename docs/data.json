@@ -1,8 +1,8 @@
 {
  "schema": 2,
  "station": "Richmond Hill, ON",
- "updated": "2026-07-27T23:25:39Z",
- "epoch": 1785194739,
+ "updated": "2026-07-27T23:27:44Z",
+ "epoch": 1785194864,
  "today_cad": 1709,
  "pred": [
   1702,
