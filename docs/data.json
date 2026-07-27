@@ -1,15 +1,15 @@
 {
  "schema": 1,
  "station": "Richmond Hill, ON",
- "updated": "2026-07-27T12:41:42Z",
- "epoch": 1785156102,
- "today_cad": 1788,
+ "updated": "2026-07-27T21:36:39Z",
+ "epoch": 1785188199,
+ "today_cad": 1796,
  "pred": [
-  1782,
+  1787,
+  1783,
+  1781,
   1780,
-  1778,
-  1778,
-  1777
+  1779
  ],
  "window_lo": 1584,
  "window_hi": 1825,
@@ -21,18 +21,18 @@
   1819,
   1825,
   1799,
-  1788
+  1796
  ],
  "meta": {
-  "level_source": "anchored(2026-07-26, +1d)",
+  "level_source": "anchored(2026-07-27, +0d)",
   "days_of_history": 64,
-  "observed_days": 54,
-  "margin_cad_l": 0.1555,
-  "wholesale_cad_l": 1.1804,
-  "target_cad_l": 1.7769,
-  "rbob_usd_gal": 3.1722,
-  "usd_cad": 1.4086
+  "observed_days": 55,
+  "margin_cad_l": 0.1591,
+  "wholesale_cad_l": 1.1745,
+  "target_cad_l": 1.7786,
+  "rbob_usd_gal": 3.152,
+  "usd_cad": 1.4105
  },
- "verdict_hint": "EXPENSIVE",
- "reason_hint": "High, no dip coming"
+ "verdict_hint": "WAIT",
+ "reason_hint": "Save 1.7c in 3 days"
 }
