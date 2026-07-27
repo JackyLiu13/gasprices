@@ -245,6 +245,10 @@ def main() -> int:
             "id": best.id,
             "label": best.label,
             "price": model.to_tenths(best.predicted),
+            # The device re-prices the whole window when you cycle stations, by
+            # shifting it by (that station's offset - this one). Without this it
+            # would have to guess what today_cad is relative to.
+            "offset": model.to_tenths(best.offset or 0.0),
             "save": model.to_tenths(save_vs_regular),
             "n": best.observations,
             "confident": best.confident,
@@ -253,6 +257,7 @@ def main() -> int:
             "id": baseline.id,
             "label": baseline.label,
             "price": model.to_tenths(baseline.predicted),
+            "offset": model.to_tenths(baseline.offset or 0.0),
         },
         "stations": station_rows,
         # Diagnostics — the firmware ignores these, you won't.

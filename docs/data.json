@@ -1,15 +1,15 @@
 {
  "schema": 2,
  "station": "Richmond Hill, ON",
- "updated": "2026-07-27T22:03:43Z",
- "epoch": 1785189823,
+ "updated": "2026-07-27T23:25:39Z",
+ "epoch": 1785194739,
  "today_cad": 1709,
  "pred": [
-  1700,
+  1702,
+  1699,
+  1697,
   1696,
-  1694,
-  1693,
-  1693
+  1696
  ],
  "window_lo": 1498,
  "window_hi": 1738,
@@ -27,6 +27,7 @@
   "id": "esso-beaver-creek",
   "label": "ESSO BEAVERCRK",
   "price": 1709,
+  "offset": -87,
   "save": 90,
   "n": 1,
   "confident": false
@@ -34,7 +35,8 @@
  "regular": {
   "id": "esso-bayview-9999",
   "label": "ESSO BAYVIEW",
-  "price": 1799
+  "price": 1799,
+  "offset": 3
  },
  "stations": [
   {
@@ -193,14 +195,14 @@
   "days_of_history": 64,
   "observed_days": 55,
   "margin_cad_l": 0.1591,
-  "wholesale_cad_l": 1.1745,
-  "target_cad_l": 1.7786,
-  "rbob_usd_gal": 3.152,
+  "wholesale_cad_l": 1.1809,
+  "target_cad_l": 1.7822,
+  "rbob_usd_gal": 3.1693,
   "usd_cad": 1.4105,
   "benchmark_cad_l": 1.7955,
   "station_shift_cad_l": -0.0865,
   "stations_priced": 15
  },
- "verdict_hint": "WAIT",
- "reason_hint": "Save 1.6c in 3 days"
+ "verdict_hint": "EXPENSIVE",
+ "reason_hint": "High, no dip coming"
 }

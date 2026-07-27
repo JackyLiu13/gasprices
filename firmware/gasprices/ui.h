@@ -140,10 +140,14 @@ static void uiSparkline(const int32_t *hist, uint8_t n, int16_t x, int16_t y,
 // bestLabel/bestSave describe which station the price on screen belongs to.
 // today/window/hist are all already priced at that station, so the header names
 // the number rather than adding a competing one.
+// bestLabel/bestSave describe the station currently on screen. today/window/hist
+// are already priced at it, so the header names the number rather than adding a
+// competing one. bestSave may be negative when browsing a pricier station.
 static void uiRender(const GpInput *in, const GpVerdict *v,
                      const int32_t *hist, uint8_t histLen, bool online,
                      const char *bestLabel = nullptr, int32_t bestSave = 0,
-                     bool bestConfident = true) {
+                     bool bestConfident = true,
+                     uint8_t stationIdx = 0, uint8_t stationCount = 0) {
   char buf[40], tmp[16];
   const uint16_t vc = uiVerdictColor(v->verdict);
 
@@ -156,6 +160,12 @@ static void uiRender(const GpInput *in, const GpVerdict *v,
   if (bestLabel && bestLabel[0]) {
     lcd.print(bestLabel);
     if (!bestConfident) lcd.print(F(" ?"));   // offset from very few samples
+    if (stationCount > 1) {
+      snprintf(buf, sizeof buf, " %u/%u",
+               (unsigned)(stationIdx + 1), (unsigned)stationCount);
+      lcd.setTextColor(C_DIM);
+      lcd.print(buf);
+    }
   } else {
     lcd.print(F("RICHMOND HILL"));
   }
@@ -215,6 +225,14 @@ static void uiRender(const GpInput *in, const GpVerdict *v,
     gp_fmt_cents(bestSave, tmp, sizeof tmp);
     snprintf(buf, sizeof buf, "SAVE %s", tmp);
     uiRightText(buf, LCD_W - 6, 126, 1, C_GREEN);
+  } else if (bestSave < 0) {
+    // Browsing a station dearer than your usual one — say so in red rather
+    // than showing nothing, so cycling never looks like it stopped working.
+    gp_fmt_cents(-bestSave, tmp, sizeof tmp);
+    snprintf(buf, sizeof buf, "+%s", tmp);
+    uiRightText(buf, LCD_W - 6, 126, 1, C_RED);
+  } else if (stationCount > 0) {
+    uiRightText("USUAL", LCD_W - 6, 126, 1, C_GREY);
   } else if (v->days_to_wait > 0) {
     gp_fmt_cents(v->save, tmp, sizeof tmp);
     snprintf(buf, sizeof buf, "%dd %s", (int)v->days_to_wait, tmp);

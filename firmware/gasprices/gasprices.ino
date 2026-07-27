@@ -26,7 +26,8 @@
 #include "ui.h"
 
 #define HIST_MAX        32
-#define CACHE_MAGIC     0x47415301UL   // "GAS\1"
+#define STATION_MAX     20             // stations kept in RTC memory
+#define CACHE_MAGIC     0x47415302UL   // "GAS\2" — bump invalidates old layouts
 #define WIFI_TIMEOUT_MS 20000
 #define AWAKE_REFRESH_S (6 * 3600)     // fallback cadence if the clock never syncs
 #define LED_BRIGHTNESS  48             // 0-255; the onboard WS2812 is very bright
@@ -47,8 +48,24 @@ RTC_DATA_ATTR static struct {
   // station, so this is the label for the number, not a second number.
   char     bestLabel[20];
   int32_t  bestSave;       // tenths of a cent vs the cheapest "regular" station
-  bool     bestConfident;  // enough observations for the offset to be trusted
+  int32_t  bestOffset;     // this station's offset from the regional benchmark
+  bool     bestConfident;
+  int32_t  regularPrice;   // what you'd pay at your usual station, 0 = unknown
+
+  // Every tracked station, cheapest first, so the button can walk the list
+  // without another fetch.
+  struct {
+    char    label[20];
+    int32_t price;
+    int32_t offset;
+    uint8_t observations;
+    bool    isRegular;
+  } stations[STATION_MAX];
+  uint8_t  stationCount;
 } cache;
+
+// Which station is on screen. 0 = the cheapest, which is what you get on boot.
+RTC_DATA_ATTR static uint8_t gStationIdx = 0;
 
 RTC_DATA_ATTR static TankState gTank = TANK_HALF;
 RTC_DATA_ATTR static uint32_t  gBoots = 0;
@@ -164,7 +181,33 @@ static bool fetchData() {
   strncpy(cache.bestLabel, label, sizeof cache.bestLabel - 1);
   cache.bestLabel[sizeof cache.bestLabel - 1] = '\0';
   cache.bestSave = best["save"] | 0;
+  cache.bestOffset = best["offset"] | 0;
   cache.bestConfident = best["confident"] | false;
+  cache.regularPrice = doc["regular"]["price"] | 0;
+
+  const char *regularId = doc["regular"]["id"] | "";
+  cache.stationCount = 0;
+  for (JsonObject s : doc["stations"].as<JsonArray>()) {
+    if (cache.stationCount >= STATION_MAX) break;
+    auto &dst = cache.stations[cache.stationCount];
+    strncpy(dst.label, s["label"] | "", sizeof dst.label - 1);
+    dst.label[sizeof dst.label - 1] = '\0';
+    dst.price        = s["price"] | 0;
+    dst.offset       = s["offset"] | 0;
+    dst.observations = s["n"] | 0;
+    dst.isRegular    = strcmp(s["id"] | "", regularId) == 0;
+    cache.stationCount++;
+  }
+  if (gStationIdx >= cache.stationCount) gStationIdx = 0;
+
+  // A feed that lists stations but omits best.offset would otherwise leave
+  // bestOffset at 0 and shift every price by the full offset. today_cad is
+  // priced at the cheapest station and the list is sorted cheapest first, so
+  // entry 0 is the correct reference.
+  if (!best["offset"].is<int32_t>() && cache.stationCount > 0) {
+    cache.bestOffset = cache.stations[0].offset;
+    Serial.println("data: best.offset missing, using cheapest station's offset");
+  }
 
   Serial.printf("data: today=%ld pred=%u hist=%u lo=%ld hi=%ld\n",
                 (long)cache.today, cache.predLen, cache.histLen,
@@ -193,14 +236,37 @@ static void decideAndRender() {
     return;
   }
 
+  // The feed prices everything at the cheapest station. Viewing a different one
+  // shifts the whole series by the difference in their offsets — the same
+  // rebasing the backend does, so level% keeps meaning "cheap for THIS station
+  // against its own range" rather than against the cheapest station's range.
+  int32_t shift = 0;
+  const char *label = cache.bestLabel;
+  int32_t shownPrice = cache.today;
+  bool confident = cache.bestConfident;
+
+  if (cache.stationCount > 0 && gStationIdx < cache.stationCount) {
+    const auto &st = cache.stations[gStationIdx];
+    shift      = st.offset - cache.bestOffset;
+    label      = st.label;
+    shownPrice = st.price;
+    confident  = st.observations >= 3;
+  }
+
   GpInput in;
-  in.today      = cache.today;
+  in.today      = cache.today + shift;
   in.pred_len   = cache.predLen;
-  for (uint8_t i = 0; i < cache.predLen; i++) in.pred[i] = cache.pred[i];
-  in.window_lo  = cache.window_lo;
-  in.window_hi  = cache.window_hi;
+  for (uint8_t i = 0; i < cache.predLen; i++) in.pred[i] = cache.pred[i] + shift;
+  in.window_lo  = cache.window_lo + shift;
+  in.window_hi  = cache.window_hi + shift;
   in.age_minutes = dataAgeMinutes();
   in.tank       = gTank;
+
+  int32_t hist[HIST_MAX];
+  for (uint8_t i = 0; i < cache.histLen; i++) hist[i] = cache.hist[i] + shift;
+
+  // Savings against your usual station: positive means this one is cheaper.
+  int32_t save = cache.regularPrice > 0 ? cache.regularPrice - shownPrice : 0;
 
   GpVerdict v;
   gp_evaluate(&in, &gCfg, &v);
@@ -208,14 +274,16 @@ static void decideAndRender() {
   char price[16], reason[48];
   gp_fmt_price(in.today, price, sizeof price);
   gp_reason(&in, &v, reason, sizeof reason);
-  Serial.printf("verdict: %s | %s | %s | level=%ld%% tank=%d age=%ldm\n",
-                price, gp_verdict_name(v.verdict), reason,
+  Serial.printf("verdict: %s @ %s (%u/%u) | %s | %s | level=%ld%% tank=%d age=%ldm\n",
+                price, label, (unsigned)(gStationIdx + 1),
+                (unsigned)(cache.stationCount ? cache.stationCount : 1),
+                gp_verdict_name(v.verdict), reason,
                 (long)v.level_pct, (int)gTank, (long)in.age_minutes);
 
   setLed(gp_verdict_color(v.verdict));
   if (gHaveLcd) {
-    uiRender(&in, &v, cache.hist, cache.histLen, gOnline,
-             cache.bestLabel, cache.bestSave, cache.bestConfident);
+    uiRender(&in, &v, hist, cache.histLen, gOnline, label, save, confident,
+             gStationIdx, cache.stationCount);
   }
 }
 
@@ -242,13 +310,20 @@ static void pollButton() {
     uint32_t held = millis() - downAt;
     downAt = 0;
     if (held < 40) return;                       // debounce
-    if (held > 1000) {
+
+    // Three press lengths. Station cycling gets the shortest because it's the
+    // one you'll actually use — the spread across town is worth several times
+    // the timing signal, so browsing stations is the main interaction.
+    if (held > 2500) {
       Serial.println("button: forced refresh");
       if (gHaveLcd) uiMessage("Refreshing...", nullptr);
       refresh();
-    } else {
+    } else if (held > 800) {
       gTank = (TankState)((gTank + 1) % 3);
       Serial.printf("button: tank=%d\n", (int)gTank);
+      decideAndRender();
+    } else if (cache.stationCount > 0) {
+      gStationIdx = (uint8_t)((gStationIdx + 1) % cache.stationCount);
       decideAndRender();                         // re-decide, no refetch needed
     }
   }
