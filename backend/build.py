@@ -22,6 +22,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 import model  # noqa: E402
 import sources  # noqa: E402
+import stations  # noqa: E402
 from verdict import Input, Tank, evaluate  # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -201,9 +202,37 @@ def main() -> int:
     spark = [model.to_tenths(v) for v in
              (best_retail(r) for r in since(SPARK_DAYS)) if v]
 
+    # 7. Stations. The regional series above is the benchmark; each station is
+    #    that benchmark plus its own stable offset.
+    benchmark = {r["date"]: b for r in history if (b := best_retail(r))}
+    sts = stations.load_stations()
+    stations.compute_offsets(sts, benchmark, today)
+    stations.predict_all(sts, today_retail)
+
+    best = stations.cheapest(sts)
+    baseline = stations.cheapest(sts, roles=("regular",))
+
+    # Everything the device shows is priced at the station you'd actually drive
+    # to. Rebasing the whole window by one offset (rather than splicing per-day
+    # cheapest prices) keeps the series smooth, so level% still means "how cheap
+    # is this station against its own recent range" instead of jumping every
+    # time a different station takes the lead.
+    shift = best.offset if best and best.offset is not None else 0.0
+    if best:
+        today_retail += shift
+        pred = [p + shift for p in pred]
+        lo, hi = lo + shift, hi + shift
+        spark = [s + model.to_tenths(shift) for s in spark]
+
+    save_vs_regular = 0.0
+    if best and baseline and baseline.id != best.id:
+        save_vs_regular = max(0.0, (baseline.predicted or 0) - (best.predicted or 0))
+
+    station_rows = stations.summary(sts)
+
     now = dt.datetime.now(dt.timezone.utc).replace(microsecond=0)
     payload = {
-        "schema": 1,
+        "schema": 2,
         "station": STATION,
         "updated": now.isoformat().replace("+00:00", "Z"),
         "epoch": int(now.timestamp()),
@@ -212,6 +241,20 @@ def main() -> int:
         "window_lo": model.to_tenths(lo),
         "window_hi": model.to_tenths(hi),
         "hist": spark,
+        "best": None if not best else {
+            "id": best.id,
+            "label": best.label,
+            "price": model.to_tenths(best.predicted),
+            "save": model.to_tenths(save_vs_regular),
+            "n": best.observations,
+            "confident": best.confident,
+        },
+        "regular": None if not baseline else {
+            "id": baseline.id,
+            "label": baseline.label,
+            "price": model.to_tenths(baseline.predicted),
+        },
+        "stations": station_rows,
         # Diagnostics — the firmware ignores these, you won't.
         "meta": {
             "level_source": level_src,
@@ -222,10 +265,13 @@ def main() -> int:
             "target_cad_l": round(target, 4),
             "rbob_usd_gal": round(rbob_today, 4),
             "usd_cad": round(fx, 4),
+            "benchmark_cad_l": round(today_retail - shift, 4),
+            "station_shift_cad_l": round(shift, 4),
+            "stations_priced": len(station_rows),
         },
     }
 
-    # 7. Run the engine here too, so a broken rule shows up in CI logs before it
+    # 8. Run the engine here too, so a broken rule shows up in CI logs before it
     #    ships to a device you'd have to walk over to.
     v = evaluate(Input(today=payload["today_cad"], pred=payload["pred"],
                        window_lo=payload["window_lo"], window_hi=payload["window_hi"],
@@ -243,8 +289,11 @@ def main() -> int:
     save_history(history)
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(text)
-    print(f"{OUT.relative_to(ROOT)}: {model.to_tenths(today_retail)} "
-          f"({level_src}) -> {v.verdict.value}: {v.reason}")
+    where = f" @ {best.label}" if best else ""
+    saving = (f", save {save_vs_regular * 100:.1f}c vs {baseline.label}"
+              if best and baseline and save_vs_regular > 0 else "")
+    print(f"{OUT.relative_to(ROOT)}: {model.to_tenths(today_retail)}{where} "
+          f"({level_src}) -> {v.verdict.value}: {v.reason}{saving}")
     return 0
 
 

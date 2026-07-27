@@ -1,27 +1,192 @@
 {
- "schema": 1,
+ "schema": 2,
  "station": "Richmond Hill, ON",
- "updated": "2026-07-27T21:36:39Z",
- "epoch": 1785188199,
- "today_cad": 1796,
+ "updated": "2026-07-27T22:02:32Z",
+ "epoch": 1785189752,
+ "today_cad": 1709,
  "pred": [
-  1787,
-  1783,
-  1781,
-  1780,
-  1779
+  1700,
+  1696,
+  1694,
+  1693,
+  1693
  ],
- "window_lo": 1584,
- "window_hi": 1825,
+ "window_lo": 1498,
+ "window_hi": 1738,
  "hist": [
-  1584,
-  1634,
-  1651,
-  1792,
-  1819,
-  1825,
-  1799,
-  1796
+  1497,
+  1547,
+  1564,
+  1705,
+  1732,
+  1738,
+  1712,
+  1709
+ ],
+ "best": {
+  "id": "esso-beaver-creek",
+  "label": "ESSO BEAVERCRK",
+  "price": 1709,
+  "save": 90,
+  "n": 1,
+  "confident": false
+ },
+ "regular": {
+  "id": "esso-bayview-9999",
+  "label": "ESSO BAYVIEW",
+  "price": 1799
+ },
+ "stations": [
+  {
+   "id": "esso-beaver-creek",
+   "label": "ESSO BEAVERCRK",
+   "city": "Richmond Hill",
+   "role": "favourite",
+   "price": 1709,
+   "offset": -87,
+   "n": 1,
+   "seen": "2026-07-27"
+  },
+  {
+   "id": "shell-hwy7-408",
+   "label": "SHELL HWY7",
+   "city": "Richmond Hill",
+   "role": "tracked",
+   "price": 1719,
+   "offset": -77,
+   "n": 1,
+   "seen": "2026-07-27"
+  },
+  {
+   "id": "shell-hwy7-5706",
+   "label": "SHELL HWY7 MKM",
+   "city": "Markham",
+   "role": "tracked",
+   "price": 1729,
+   "offset": -66,
+   "n": 1,
+   "seen": "2026-07-27"
+  },
+  {
+   "id": "shell-leslie-9240",
+   "label": "SHELL LESLIE",
+   "city": "Richmond Hill",
+   "role": "favourite",
+   "price": 1739,
+   "offset": -56,
+   "n": 1,
+   "seen": "2026-07-27"
+  },
+  {
+   "id": "petrocan-hwy7-4641",
+   "label": "PETROCAN HWY7",
+   "city": "Markham",
+   "role": "tracked",
+   "price": 1749,
+   "offset": -46,
+   "n": 1,
+   "seen": "2026-07-27"
+  },
+  {
+   "id": "pioneer-major-mac-6375",
+   "label": "PIONEER MAJMAC",
+   "city": "Markham",
+   "role": "tracked",
+   "price": 1769,
+   "offset": -27,
+   "n": 1,
+   "seen": "2026-07-27"
+  },
+  {
+   "id": "esso-yonge-10579",
+   "label": "ESSO YONGE 105",
+   "city": "Richmond Hill",
+   "role": "tracked",
+   "price": 1779,
+   "offset": -17,
+   "n": 1,
+   "seen": "2026-07-27"
+  },
+  {
+   "id": "petrocan-bayview-9277",
+   "label": "PETROCAN BAYVW",
+   "city": "Richmond Hill",
+   "role": "tracked",
+   "price": 1779,
+   "offset": -17,
+   "n": 1,
+   "seen": "2026-07-27"
+  },
+  {
+   "id": "shell-yonge-8656",
+   "label": "SHELL YONGE 86",
+   "city": "Richmond Hill",
+   "role": "tracked",
+   "price": 1779,
+   "offset": -17,
+   "n": 1,
+   "seen": "2026-07-27"
+  },
+  {
+   "id": "esso-woodbine-7001",
+   "label": "ESSO WOODBINE",
+   "city": "Markham",
+   "role": "tracked",
+   "price": 1779,
+   "offset": -17,
+   "n": 1,
+   "seen": "2026-07-27"
+  },
+  {
+   "id": "esso-bayview-9999",
+   "label": "ESSO BAYVIEW",
+   "city": "Richmond Hill",
+   "role": "regular",
+   "price": 1799,
+   "offset": 3,
+   "n": 1,
+   "seen": "2026-07-27"
+  },
+  {
+   "id": "petrocan-major-mac-695",
+   "label": "PETROCAN MAJMAC",
+   "city": "Richmond Hill",
+   "role": "tracked",
+   "price": 1799,
+   "offset": 3,
+   "n": 1,
+   "seen": "2026-07-27"
+  },
+  {
+   "id": "esso-yonge-12891",
+   "label": "ESSO YONGE 128",
+   "city": "Richmond Hill",
+   "role": "tracked",
+   "price": 1799,
+   "offset": 3,
+   "n": 1,
+   "seen": "2026-07-27"
+  },
+  {
+   "id": "shell-yonge-11151",
+   "label": "SHELL YONGE 111",
+   "city": "Richmond Hill",
+   "role": "tracked",
+   "price": 1799,
+   "offset": 3,
+   "n": 1,
+   "seen": "2026-07-27"
+  },
+  {
+   "id": "esso-elgin-mills-2801",
+   "label": "ESSO ELGIN MKM",
+   "city": "Markham",
+   "role": "tracked",
+   "price": 1799,
+   "offset": 3,
+   "n": 1,
+   "seen": "2026-07-27"
+  }
  ],
  "meta": {
   "level_source": "anchored(2026-07-27, +0d)",
@@ -31,8 +196,11 @@
   "wholesale_cad_l": 1.1745,
   "target_cad_l": 1.7786,
   "rbob_usd_gal": 3.152,
-  "usd_cad": 1.4105
+  "usd_cad": 1.4105,
+  "benchmark_cad_l": 1.7955,
+  "station_shift_cad_l": -0.0865,
+  "stations_priced": 15
  },
  "verdict_hint": "WAIT",
- "reason_hint": "Save 1.7c in 3 days"
+ "reason_hint": "Save 1.6c in 3 days"
 }

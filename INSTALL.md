@@ -20,18 +20,46 @@ curl -s https://jackyliu13.github.io/gasprices/data.json
 You should get a small JSON blob with `today_cad`, `pred`, and `verdict_hint`.
 That URL is already filled into your `config.h`.
 
-Your board has also already been identified — plugged in and interrogated with
-`esptool`:
+### Your board
 
 | | |
 |---|---|
+| Board | **Waveshare ESP32-C6-LCD-1.47** |
 | Chip | **ESP32-C6FH8 (QFN32) rev v0.2**, 8 MB embedded flash |
+| Display | **onboard 1.47" ST7789, 172×320**, SPI, soldered — nothing to wire |
 | USB | **USB-Serial/JTAG** (native), Espressif VID `0x303A` PID `0x1001` |
 | Port | `/dev/cu.usbmodem3101` |
-| MAC | `b0:a6:04:8b:4e:c0` |
+
+> **Identify the board, not just the chip.** `esptool` reports the *chip*
+> (`ESP32-C6FH8`) and is accurate about it — but the chip tells you nothing about
+> which GPIOs are wired to what, and that is where all the pain lives. Two boards
+> with the same C6 have completely different pinouts. Read the silkscreen: this
+> one says `ESP32-C6-LCD-1.47` along the left edge.
 
 Two useful consequences: **you do not need a CH340 or CP2102 driver** (the C6
 speaks USB directly), and the flash is 8 MB, not the 4 MB the IDE defaults to.
+
+### The pins that matter
+
+The LCD is hardwired to these, and **none of them are broken out on the
+headers**:
+
+| Function | GPIO |
+|---|---|
+| LCD MOSI | 6 |
+| LCD SCLK | 7 |
+| LCD CS | 14 |
+| LCD DC | 15 |
+| LCD RST | 21 |
+| LCD backlight | 22 |
+| RGB LED | 8 |
+| BOOT button | 9 |
+
+The headers expose only **GPIO 0–5, 9, 12, 13, 18, 19, 20, 23**, plus `3V3`,
+`GND`, `5V`, `RXD`, `TXD`. Note what is *absent*: **GPIO6 and GPIO7 are not
+available.** If you find a guide telling you to wire an I²C display to 6 and 7,
+it is describing a different board, and following it here means driving the
+LCD's own SPI data and clock lines.
 
 To re-check the port at any time:
 
@@ -52,10 +80,11 @@ Arduino IDE → **Tools → Manage Libraries**, then install:
 | Library | Version | Used for |
 |---|---|---|
 | `ArduinoJson` by Benoit Blanchon | **7.x** | parsing `data.json` |
-| `Adafruit SSD1306` | latest | the OLED |
+| `Adafruit ST7735 and ST7789 Library` | latest | the LCD |
 | `Adafruit GFX Library` | latest | text/graphics primitives |
 
-Adafruit SSD1306 will offer to pull in its dependencies — accept.
+Both Adafruit libraries will offer to pull in dependencies (`Adafruit BusIO`) —
+accept.
 
 > ArduinoJson **7** matters. The sketch uses `JsonDocument`, which replaced v6's
 > `StaticJsonDocument`/`DynamicJsonDocument`. On v6 it won't compile.
@@ -76,7 +105,7 @@ that introduced C6 support), so there's nothing to do there.
 | **USB CDC On Boot** | **Enabled** | ← **the one that gets everyone** |
 | Port | `/dev/cu.usbmodem3101` | |
 | Flash Size | **8MB (64Mb)** | your chip really has 8 MB; the IDE defaults to 4 |
-| Partition Scheme | 8M with spiffs / default | needs ≳1.2 MB app space |
+| Partition Scheme | 8M with spiffs / default | the sketch is ~1.17 MB |
 | Upload Speed | 921600 | drop to 115200 only if uploads fail |
 
 Leave everything else alone.
@@ -89,6 +118,12 @@ the Serial Monitor stays completely blank — while the sketch runs perfectly.
 
 It looks exactly like a dead board. It isn't. If your Serial Monitor is empty,
 check this before anything else.
+
+### Partition scheme is not optional
+
+The sketch is ~1,175,000 bytes. The default 4 MB scheme gives the app 1.2 MB, so
+it fits at about **89%** — technically, with almost nothing spare. Pick the 8 MB
+scheme and you're at 35% instead. Anything you add later will thank you.
 
 **Check:** board and port selected, USB CDC On Boot = Enabled.
 
@@ -115,153 +150,96 @@ it, and don't paste it into `config.h.example`.
 
 ---
 
-## 4. Flash it — LED only, before wiring anything
+## 4. Flash it
 
-Do this **before** connecting the display. The sketch runs fine without a screen
-(it detects the absence and says so), which lets you prove WiFi, HTTPS and JSON
-parsing work in isolation. If you wire the OLED first and something fails, you
-won't know which half is at fault.
-
-Open `firmware/gasprices/gasprices.ino` and press Upload.
+Nothing to wire — the display is part of the board. Open
+`firmware/gasprices/gasprices.ino` and press Upload.
 
 Then **Tools → Serial Monitor at 115200 baud**. Press the RST button. Expect
 roughly:
 
 ```
 gasprices boot #1 (power-on)
-oled: not found (LED-only mode)
-wifi: 192.168.1.42
-time: 2026-07-26 15:04 local
+lcd: 320x172 ST7789 rot=1
+wifi: 10.0.0.133
+time: 2026-07-26 18:55 local
 data: today=1799 pred=5 hist=7 lo=1584 hi=1825
-verdict: $1.799 | EXPENSIVE | High, no dip coming | level=89% tank=1 age=3m
+verdict: $1.799 | EXPENSIVE | High, no dip coming | level=89% tank=1 age=90m
 ```
 
-`oled: not found` is expected right now — nothing is wired yet.
-
-**Check:** you get a `verdict:` line, and the onboard RGB LED (GPIO8) lights
-**red** for EXPENSIVE. Green = FILL_NOW/GREAT, amber = NEUTRAL, red =
-WAIT/EXPENSIVE, faint purple = STALE.
-
-If the LED stays dark but serial looks right, your board may put its LED on a
-pin other than GPIO8, or have none. Harmless — the OLED is the real display.
-
----
-
-## 5. Identify the display
-
-Cheap OLED modules vary, and yours is unknown, so find out what it is rather
-than guessing. Wire it up:
-
-| OLED | ESP32-C6 |
-|---|---|
-| VCC | **3V3** (not 5V) |
-| GND | GND |
-| SDA | **GPIO6** |
-| SCL | **GPIO7** |
-
-GPIO6/7 are the sketch's defaults and are safe general-purpose pins on the C6.
-The C6 routes I²C through a GPIO matrix, so any free pin works — if 6 and 7
-aren't broken out on your board, pick others and update `I2C_SDA_PIN` /
-`I2C_SCL_PIN` in `config.h`. **Avoid** GPIO4, 5, 8, 9, 15 (strapping pins) and
-GPIO24–30 (SPI flash).
-
-Now flash `firmware/i2c_scan/i2c_scan.ino` and watch the Serial Monitor:
+And the panel should show:
 
 ```
-i2c_scan
-SDA=GPIO6  SCL=GPIO7
-
-scanning 0x01..0x7E ...
-  device at 0x3C  <- looks like an SSD1306/SH1106 OLED  (set OLED_ADDR 0x3C in config.h)
-  1 device(s).
++-----------------------------------------------------+
+| RICHMOND HILL                                    1h |
+|-----------------------------------------------------|
+| $1.799                               LVL 89%        |
+|                                   [######----]      |
+|##################EXPENSIVE##########################|   <- red
+|                                                     |
+| High, no dip coming                                 |
+| TANK HALF                                     ^0.2c |
+|      ~~~~ sparkline of the rolling window ~~~~      |
++-----------------------------------------------------+
 ```
 
-**Check:** exactly one device, at `0x3C` or `0x3D`. Write it down.
+Price in size-4 text, a verdict bar filled in the verdict colour, one line of
+plain English, the tank state, and a sparkline of the rolling window.
 
-**Nothing found?** That's wiring, not software:
-- VCC on 3V3, not 5V
-- SDA and SCL swapped (by far the most common)
-- a module needing external 4.7 kΩ pull-ups — most breakouts have them onboard
-- a dead/unsoldered module — try the other I²C pins to rule out the GPIO
+**Check:** you get a `verdict:` line, the panel matches, the price agrees with
+`curl`ing the feed, and the onboard RGB LED (GPIO8) lights **red** for
+EXPENSIVE. Green = FILL_NOW/GREAT, amber = NEUTRAL, red = WAIT/EXPENSIVE, faint
+purple = STALE. The bar on screen and the LED always use the same colour.
 
-### Which panel is it?
+**Screen upside down?** Set `LCD_ROTATION` to `3` in `config.h` and reflash. `1`
+and `3` are the two landscape orientations; `0` and `2` are portrait, which the
+layout isn't designed for.
 
-| Physical size | Almost always |
-|---|---|
-| 0.96" | SSD1306, 128×64 — **what this project targets** |
-| 0.91" | SSD1306, 128×**32** |
-| 1.3" | often **SH1106**, 128×64 |
-
-Count the pixel rows if the silkscreen doesn't say. This matters — see step 7.
-
----
-
-## 6. Set the address and flash for real
-
-In `config.h`, set the address the scanner reported:
-
-```c
-#define OLED_ADDR  0x3C   // or 0x3D
-```
-
-Re-flash `gasprices.ino`. The `oled: not found` line should be gone, and the
-panel should show:
-
-```
-+---------------------+
-|RICHMOND HILL      0h|
-|$1.799        LVL 89%|
-|#####EXPENSIVE#######|
-|High, no dip coming  |
-|      /\_            |
-+---------------------+
-```
-
-Price in double-height text, an inverted verdict bar, one line of plain English,
-and a sparkline of the last 30 days.
-
-You can preview that layout on your laptop any time, no hardware needed:
+You can preview the layout on your laptop any time, no hardware needed:
 
 ```bash
 make -C tests ui
 ```
 
-(In the terminal preview, double-height text shows as doubled characters —
-`$$11..779999` — so that character-cell overflow is visible. On the panel it's
-simply `$1.799` in a larger font.)
-
-**Check:** the panel matches, and the price agrees with `curl`ing the feed.
+(In the terminal preview, large text shows as doubled characters —
+`$$$$1111....777799999999` — so that character-cell overflow is visible. On the
+panel it's simply `$1.799` in a large font.)
 
 ---
 
-## 7. If your panel isn't a 128×64 SSD1306
+## 5. If your board is different
 
-Be aware these are real work, not one-line fixes:
+This project now targets the onboard ST7789. If you have a plain C6 devkit and a
+separate display, the work is in `ui.h` only — the verdict engine and backend are
+untouched either way.
 
-**128×32 (0.91").** `ui.h` hardcodes a 64-pixel-tall layout — verdict bar at
-y=27, sparkline at y=52–63, both off the bottom of a 32px panel. Change
-`OLED_H` to 32 and roughly half the elements have to go; realistically you'd
-keep the price and the verdict bar and drop the sparkline and reason line.
+**Different ST7789 size.** `ui.h` hardcodes a 320×172 landscape layout. Change
+`LCD_W`/`LCD_H` and the y-coordinates in `uiRender()`. Always call
+`init()` with the panel's **native portrait** dimensions and then `setRotation()`
+— the controller's centring offset is computed from the native size, so
+initializing in landscape puts the offset on the wrong axis and shifts
+everything sideways.
 
-**SH1106 (1.3").** Different controller. Needs the `Adafruit_SH110X` library
-instead, a different constructor, and a 132→128 column offset or everything
-renders shifted by 2px. The layout itself carries over unchanged.
+**An I²C SSD1306 instead.** Needs `Adafruit_SSD1306`, a `Wire.begin(sda, scl)`
+call, an address (`0x3C` or `0x3D`), and the whole layout rescaled to 128×64.
+Wire it to header pins — **GPIO2/3 are free and known-good**; do not use 6/7.
+`firmware/i2c_scan` will find the address.
 
-Either way the verdict engine and backend are untouched — this is purely `ui.h`.
+**A monochrome panel.** The verdict bar relies on colour to carry meaning. On a
+mono panel, go back to an inverted fill (white bar, black text) as the original
+128×64 layout did.
 
 ---
 
-## 8. Using it
+## 6. Using it
 
-**The button.** `TANK_BUTTON_PIN` is GPIO9, the BOOT button on most C6 boards:
+**The button.** `TANK_BUTTON_PIN` is GPIO9, the BOOT button:
 
 - **Short press** — cycle tank state FULL → HALF → LOW. Re-decides instantly
   using cached data, no refetch. Watch the verdict change: at LOW it collapses
   to `FILL NOW` / "Tank low: fill anyway", because running dry beats saving 3¢.
+  The tank state is shown on screen, so you get direct feedback.
 - **Hold >1 s** — force a refresh from the network.
-
-If your board's button isn't on GPIO9, this silently does nothing (the pin just
-reads high) — harmless, and everything else still works.
 
 **Refresh schedule.** Twice daily at 05:30 and 16:30 Toronto time, after the
 overnight reset and the afternoon moves. Change `REFRESH_HOUR_AM` /
@@ -277,9 +255,11 @@ python3 backend/log_price.py 1.799
 Or from your phone, no laptop needed: repo → **Actions → "update price data" →
 Run workflow** → type the price into `local_price`.
 
-**Battery.** Set `USE_DEEP_SLEEP 1`. The SSD1306 keeps its framebuffer while the
-ESP32 sleeps, so the last verdict stays on screen the whole time. Watch for
-burn-in if it'll hold one image for hours.
+**Battery.** Set `USE_DEEP_SLEEP 1`. Note this behaves differently from the
+SSD1306 this project originally targeted: the ST7789 keeps its own GRAM through
+sleep, but the backlight is a plain GPIO and **GPIO22 is not an RTC pin on the
+C6**, so it drops on sleep entry and the screen goes dark until the next wake.
+You get long battery life, not a persistent display.
 
 ---
 
@@ -290,16 +270,25 @@ burn-in if it'll hold one image for hours.
 | Serial Monitor completely blank | **USB CDC On Boot = Disabled.** Set Enabled, reflash |
 | No `/dev/cu.usbmodem*` | Power-only USB cable, or board not in a working state |
 | Upload fails / times out | Hold BOOT, tap RST, release BOOT to force download mode. Or lower Upload Speed to 115200 |
-| `wifi: FAILED` | Wrong SSID/password, or a 5 GHz-only network — the C6 is 2.4 GHz only |
+| `wifi: FAILED` | Wrong SSID/password, or a 5 GHz-only network — the C6 is 2.4 GHz only. A single failure at boot can also just be a slow association against the 20 s `WIFI_TIMEOUT_MS`; try a reset before changing anything |
 | `http: 404` | `DATA_URL` typo — test it with `curl` first |
 | `http: -1` | TLS/connection failure; usually weak WiFi or DNS |
 | `json: ...` | Feed returned HTML (wrong URL) or a truncated response |
 | `json: implausible price` | Sanity guard rejected a value outside 0.50–3.50 $/L — the feed is wrong, not the device |
-| `oled: not found` | Wrong `OLED_ADDR`, swapped SDA/SCL, or 5V on VCC. Re-run `i2c_scan` |
+| Screen completely black | Backlight pin. `LCD_BL_PIN` (GPIO22) must be driven HIGH — `uiBegin()` does this. Verify serial shows the `lcd:` line |
+| Screen upside down | `LCD_ROTATION` 1 ↔ 3 in `config.h` |
+| Everything shifted sideways ~34px | `init()` was called with landscape dimensions. It must take native portrait (172, 320), with `setRotation()` after |
 | `time: NTP failed` | Non-fatal. Staleness detection is disabled; verdicts still work |
-| Screen on but garbled | SH1106 controller, or wrong size — see step 7 |
 | Verdict looks wrong | Check the feed itself: `curl -s .../data.json`. The device only renders what the backend computed |
 | `STALE` on screen | Feed older than 36 h — check the Action ran: `gh run list --workflow=update.yml` |
+
+### If you ever run an I²C scan on this board
+
+`firmware/i2c_scan` defaults to free header pins. If you point it at GPIO6/7 it
+will report **~120 devices, and a different set each run**. That is not a bus
+full of chips — it's the scanner clocking an I²C protocol into the LCD's SPI
+data and clock lines. "Everything ACKs" means *wrong pins*, exactly as
+"nothing found" means *nothing connected*.
 
 ### Compiling without hardware
 
@@ -307,7 +296,24 @@ The decision logic and screen layout both build and run on your laptop:
 
 ```bash
 make -C tests test    # verdict engine, 14 cases
-make -C tests ui      # renders the OLED layout as ASCII
+make -C tests ui      # renders the LCD layout as ASCII
 ```
 
 Useful for confirming a change is good before you go find a USB cable.
+
+### Building from the command line
+
+Everything above works headlessly too, which is handy for scripted reflashes:
+
+```bash
+brew install arduino-cli
+arduino-cli config set directories.user ~/Documents/Arduino
+arduino-cli lib install ArduinoJson "Adafruit ST7735 and ST7789 Library" "Adafruit GFX Library"
+
+arduino-cli compile --upload -p /dev/cu.usbmodem3101 \
+  -b "esp32:esp32:esp32c6:CDCOnBoot=cdc,FlashSize=8M,PartitionScheme=default_8MB,UploadSpeed=921600" \
+  firmware/gasprices
+```
+
+The FQBN option string encodes exactly the same choices as the Tools menu in
+step 2 — `CDCOnBoot=cdc` is the "USB CDC On Boot → Enabled" setting.

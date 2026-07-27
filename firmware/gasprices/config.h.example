@@ -11,27 +11,39 @@
 #define DATA_URL   "https://YOURUSER.github.io/gasprices/data.json"
 
 // --- Hardware ---------------------------------------------------------------
-// I2C pins for the SSD1306. These are passed straight to Wire.begin(), and the
-// C6 routes I2C through a GPIO matrix, so any free pin works — wire the display
-// to whatever you set here. (For reference, the Arduino core's generic esp32c6
-// variant calls GPIO23/22 SDA/SCL and GPIO6/7 SDA1/SCL1; that only matters if
-// you call Wire.begin() with no arguments, which this sketch never does.)
-// Avoid GPIO4/5/8/9/15 (strapping) and GPIO24-30 (SPI flash).
-#define I2C_SDA_PIN   6
-#define I2C_SCL_PIN   7
+// Onboard 1.47" ST7789 LCD (172x320) on the Waveshare ESP32-C6-LCD-1.47. These
+// are hardwired on the board, not free choices — none are broken out on the
+// headers, which only expose GPIO 0-5, 9, 12, 13, 18, 19, 20, 23.
+//
+// On a different carrier board these will be wrong. `esptool` reports the chip,
+// not the board, so read the silkscreen and the vendor's pinout before trusting
+// any of this.
+#define LCD_MOSI_PIN  6
+#define LCD_SCLK_PIN  7
+#define LCD_CS_PIN   14
+#define LCD_DC_PIN   15
+#define LCD_RST_PIN  21
+#define LCD_BL_PIN   22   // backlight; driven high in uiBegin()
 
-// Run firmware/i2c_scan to find this if you don't know it.
-#define OLED_ADDR     0x3C   // 0x3D on some 128x64 modules
+// 1 and 3 are the two landscape orientations (320x172). Flip to 3 if the screen
+// reads upside down for how you have the board sitting. 0/2 give portrait, which
+// the layout in ui.h is not designed for.
+#define LCD_ROTATION  1
 
-// BOOT button on most C6 devkits: press to cycle tank state FULL -> HALF -> LOW.
-// Active low, internal pull-up. GPIO9 is a strapping pin, so if you want the
-// button to also wake the board from deep sleep, move it to a free GPIO (e.g. 4).
+// BOOT button: press to cycle tank state FULL -> HALF -> LOW. Active low,
+// internal pull-up. GPIO9 is a strapping pin, so if you want the button to also
+// wake the board from deep sleep, move it to a free GPIO (e.g. 4).
 #define TANK_BUTTON_PIN  9
 
 // --- Power ------------------------------------------------------------------
 // 0 = stay awake, refresh on a timer (use when USB-powered; screen stays live).
-// 1 = deep sleep between refreshes (battery). The SSD1306 holds its framebuffer
-//     while the ESP32 sleeps, so the last verdict stays on screen the whole time.
+// 1 = deep sleep between refreshes (battery).
+//
+// Note the ST7789 behaves differently here from the SSD1306 this project
+// originally targeted. The controller keeps its own GRAM through sleep, but the
+// backlight is a plain GPIO, and GPIO22 is not an RTC pin on the C6 — so it
+// drops on entry to deep sleep and the screen goes dark until the next wake.
+// You get long battery life, not a persistent display.
 #define USE_DEEP_SLEEP  0
 
 // Local refresh times, 24 h. Ontario pump prices reset overnight and retailers

@@ -10,12 +10,17 @@
 //
 // Board: ESP32C6 Dev Module. Remember USB CDC On Boot -> Enabled, or this
 // prints nothing at all.
+//
+// PINS: these default to GPIO2/3, which are free on the header of the
+// Waveshare ESP32-C6-LCD-1.47. Do NOT set them to 6/7 on that board — those are
+// the onboard LCD's SPI MOSI and SCLK, are not broken out, and scanning them
+// reports ~120 phantom devices (see the "everything ACKs" note below).
 
 #include <Arduino.h>
 #include <Wire.h>
 
-#define SDA_PIN 6
-#define SCL_PIN 7
+#define SDA_PIN 2
+#define SCL_PIN 3
 
 void setup() {
   Serial.begin(115200);
@@ -35,7 +40,6 @@ void loop() {
       Serial.printf("  device at 0x%02X", addr);
       if (addr == 0x3C || addr == 0x3D) {
         Serial.print("  <- looks like an SSD1306/SH1106 OLED");
-        Serial.printf("  (set OLED_ADDR 0x%02X in config.h)", addr);
       }
       Serial.println();
       found++;
@@ -46,6 +50,17 @@ void loop() {
     Serial.println("  nothing found.");
     Serial.println("  check: VCC->3V3 (not 5V), GND->GND, SDA/SCL not swapped,");
     Serial.println("         and that SDA_PIN/SCL_PIN above match your wiring.");
+  } else if (found > 8) {
+    // A real bus has one or two devices. Dozens of ACKs, usually a different
+    // set each pass, means SDA is reading low when the ACK is sampled — the bus
+    // is not an I2C bus at all. Overwhelmingly this is wrong pins: something
+    // else is already driving them, e.g. an onboard SPI display.
+    Serial.printf("  %d device(s) -- THIS IS NOT %d DEVICES.\n", found, found);
+    Serial.println("  'everything ACKs' means WRONG PINS, the same way");
+    Serial.println("  'nothing found' means NOTHING CONNECTED.");
+    Serial.println("  check: are SDA_PIN/SCL_PIN actually free on your board?");
+    Serial.println("         on the ESP32-C6-LCD-1.47, GPIO6/7 are the LCD's SPI");
+    Serial.println("         lines and are not broken out at all.");
   } else {
     Serial.printf("  %d device(s).\n", found);
   }

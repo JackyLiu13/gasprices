@@ -2,13 +2,13 @@
 
 A glanceable "should I fill up today?" indicator for Richmond Hill, ON.
 An ESP32-C6 pulls one small JSON file twice a day, runs a verdict engine, and
-shows the answer on an SSD1306 plus the onboard RGB LED.
+shows the answer on the onboard LCD plus the RGB LED.
 
 ```
 GitHub Action (cron, 2x/day)          ESP32-C6
   RBOB futures + USD/CAD                 HTTP GET data.json
   -> Ontario tax stack                   -> verdict engine (verdict.h)
-  -> forward price model         --->    -> OLED + RGB LED
+  -> forward price model         --->    -> LCD + RGB LED
   -> docs/data.json (~400 bytes)         -> deep sleep
 ```
 
@@ -74,11 +74,11 @@ ever drift, CI fails.
 ```bash
 make -C tests test          # C engine
 python3 backend/test_verdict.py   # Python engine
-make -C tests ui            # renders the real OLED layout in your terminal
+make -C tests ui            # renders the real LCD layout in your terminal
 ```
 
 `make -C tests ui` compiles `ui.h` against stub display headers and asserts
-nothing is drawn off the 128×64 panel:
+nothing is drawn off the 320×172 panel:
 
 ```
 == cheaper_in_two_days (tank=HALF)
@@ -179,18 +179,76 @@ all. When that happens `daysToWait` never fires and the verdict is driven
 entirely by the level signal — which is the honest answer, not a bug. Real
 forward skill would need the RBOB futures curve, which this doesn't model.
 
+## Stations — where beats when
+
+The single most useful thing this project measured: on 2026-07-27 the spread
+across Richmond Hill was **9 ¢/L** (170.9 at Beaver Creek vs 179.9 on Yonge),
+while the timing engine was arguing about **1.7 ¢ over three days**.
+
+Which station you use is worth roughly five times which day you go. So the
+device prices everything at the cheapest tracked station and shows what that
+saves against your usual one.
+
+### Offsets, not prices
+
+You can't log 17 stations a day. You don't have to. What separates stations is
+much more stable than what moves them together — Beaver Creek sits ~9 ¢ under
+the Toronto average for structural reasons (brand, volume, local competition),
+and that holds for weeks. The day-to-day swings are regional and already
+modelled.
+
+So each station carries one number:
+
+```
+offset[s] = median(observed[s, d] - benchmark[d])       # 180-day window
+price[s, today] = benchmark[today] + offset[s]
+```
+
+Log a station once and it's roughly calibrated; three times and it's solid. A
+station you haven't visited in a month still tracks the market — it just carries
+the offset you last measured. `stations.csv` is the registry,
+`station_prices.csv` the observations.
+
+```bash
+python3 backend/log_price.py --list                  # station ids
+python3 backend/log_price.py 1.709 --station beaver  # substring match is fine
+python3 backend/log_price.py 1.799                   # no --station = regional
+```
+
+`window_lo`/`window_hi`/`hist` are rebased by the winning station's offset
+rather than splicing together whichever station was cheapest each day. That
+keeps the series smooth, so `level%` still means "how cheap is this station
+against its own recent range" instead of jumping whenever the lead changes.
+
+### Why not scrape GasBuddy
+
+Their `robots.txt` permits `/gasprices/`, but Cloudflare 403s any automated
+request — GitHub Actions cannot reach it, and neither can `curl`. Getting a cron
+job through would mean browser-fingerprint spoofing or headless stealth patches:
+detection evasion, brittle, and against their ToS. The seed prices in
+`station_prices.csv` came from a one-off look in a real browser, and manual
+logging maintains them from there.
+
 ### JSON contract
 
 ```json
 {
-  "today_cad": 1489,
+  "schema": 2,
+  "today_cad": 1709,
   "pred": [1512, 1499, 1471, 1468, 1470],
   "window_lo": 1441, "window_hi": 1573,
   "hist": [1520, 1515, "... 28 days for the sparkline"],
   "epoch": 1784920505,
-  "verdict_hint": "FILL_NOW"
+  "best":    {"label": "ESSO BEAVERCRK", "price": 1709, "save": 90, "confident": false},
+  "regular": {"label": "ESSO BAYVIEW",   "price": 1799},
+  "stations": ["... every tracked station, cheapest first"],
+  "verdict_hint": "WAIT"
 }
 ```
+
+`today_cad` and everything derived from it are priced at `best`. The station
+block is optional — the firmware still renders a schema-1 feed, just without a
+station name or savings line.
 
 `epoch` (not the ISO string) drives the staleness check — no date parsing on the
 device. `verdict_hint` is for you; the firmware computes its own.
@@ -215,23 +273,25 @@ ones — linear interpolation between two weekly prices can never move
 daily rows accumulate from `build.py` going forward.
 
 **2. Firmware.** See **[INSTALL.md](INSTALL.md)** for the full walkthrough —
-library versions, board settings, wiring, and a troubleshooting table keyed to
-the sketch's actual serial output.
+library versions, board settings, board-vs-chip identification, and a
+troubleshooting table keyed to the sketch's actual serial output.
 
 The short version: Arduino IDE with ESP32 core ≥ 3.0, board *ESP32C6 Dev
 Module*, **USB CDC On Boot → Enabled** (its default of Disabled makes the Serial
 Monitor silent on a native-USB board, which looks exactly like a dead device).
-Libraries: ArduinoJson v7, Adafruit SSD1306, Adafruit GFX. Copy
+Libraries: ArduinoJson v7, Adafruit ST7735/ST7789, Adafruit GFX. Copy
 `config.h.example` to `config.h`, fill in WiFi and your Pages URL — it's
 gitignored.
 
-Wiring is SSD1306 over I²C: VCC→3V3, GND→GND, SDA→GPIO6, SCL→GPIO7. Run
-`firmware/i2c_scan` if you don't know the display's address. The BOOT button
-(GPIO9) cycles tank state; hold >1 s to force a refresh.
+There is nothing to wire. The target board is a **Waveshare
+ESP32-C6-LCD-1.47**, whose 172×320 ST7789 is soldered on and driven over SPI
+(MOSI 6, SCLK 7, CS 14, DC 15, RST 21, backlight 22). Those pins are not on the
+headers — the headers expose only GPIO 0–5, 9, 12, 13, 18, 19, 20, 23. The BOOT
+button (GPIO9) cycles tank state; hold >1 s to force a refresh.
 
-Set `USE_DEEP_SLEEP 1` for battery. The SSD1306 holds its framebuffer while the
-ESP32 sleeps, so the last verdict stays on screen the whole time — but if it's
-going to sit on one image for hours, watch for burn-in.
+Set `USE_DEEP_SLEEP 1` for battery. The ST7789 keeps its GRAM through sleep, but
+the backlight is a plain GPIO and GPIO22 is not an RTC pin on the C6, so it drops
+on sleep entry: you get long battery life, not a persistent display.
 
 ## Calibrating
 
@@ -239,8 +299,8 @@ The build order that actually works:
 
 1. **Run the backend for a week.** Log every fill-up. Compare `retail_model`
    against real pump prices and confirm the margin converges.
-2. **Flash the firmware** once the JSON looks sane. LED-only is fine at first;
-   the sketch runs without an OLED.
+2. **Flash the firmware** once the JSON looks sane. Nothing needs wiring — the
+   display is part of the board.
 3. **After ~30 days**, tune against your own history:
 
 ```bash
@@ -265,7 +325,7 @@ defaults, so CI will tell you if you only did one.
 firmware/gasprices/
   gasprices.ino     wifi, fetch, sleep scheduling, button
   verdict.h         the decision engine (no Arduino deps — compiles on host)
-  ui.h              SSD1306 layout
+  ui.h              ST7789 layout
   config.h.example  copy to config.h
 backend/
   build.py          orchestrator: fetch -> model -> docs/data.json
@@ -278,7 +338,7 @@ backend/
 tests/
   vectors.csv       shared truth for both engines
   test_verdict.cpp  C engine
-  test_ui.cpp       renders the OLED layout to your terminal
+  test_ui.cpp       renders the LCD layout to your terminal
   stubs/            fake Adafruit headers for host builds
 ```
 

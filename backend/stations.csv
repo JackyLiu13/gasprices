@@ -1,0 +1,28 @@
+# Stations to track. Edit freely — ids are the only thing that must stay stable,
+# because station_prices.csv references them.
+#
+# role:
+#   regular    a station you'd default to. Savings are measured against the
+#              cheapest of these, so it's the "what I'd otherwise pay" baseline.
+#   favourite  one you actively like / would detour for.
+#   tracked    watched for history and prediction only.
+#
+# label is what fits the device header — keep it under 18 characters.
+id,brand,address,city,role,label
+esso-beaver-creek,Esso,255 E Beaver Creek Rd,Richmond Hill,favourite,ESSO BEAVERCRK
+shell-leslie-9240,Shell,9240 Leslie St,Richmond Hill,favourite,SHELL LESLIE
+esso-16th-ave-3010,Esso,3010 16th Ave,Markham,favourite,ESSO 16TH AVE
+esso-bayview-9999,Esso,9999 Bayview Ave,Richmond Hill,regular,ESSO BAYVIEW
+esso-elgin-mills-1485,Esso,1485 Elgin Mills Rd E,Richmond Hill,regular,ESSO ELGINMILLS
+shell-hwy7-408,Shell,408 Hwy 7 E,Richmond Hill,tracked,SHELL HWY7
+esso-yonge-10579,Esso,10579 Yonge St,Richmond Hill,tracked,ESSO YONGE 105
+petrocan-bayview-9277,Petro-Canada,9277 Bayview Ave,Richmond Hill,tracked,PETROCAN BAYVW
+shell-yonge-8656,Shell,8656 Yonge St,Richmond Hill,tracked,SHELL YONGE 86
+petrocan-major-mac-695,Petro-Canada,695 Major Mackenzie Dr E,Richmond Hill,tracked,PETROCAN MAJMAC
+esso-yonge-12891,Esso,12891 Yonge St,Richmond Hill,tracked,ESSO YONGE 128
+shell-yonge-11151,Shell,11151 Yonge St,Richmond Hill,tracked,SHELL YONGE 111
+shell-hwy7-5706,Shell,5706 Hwy 7 E,Markham,tracked,SHELL HWY7 MKM
+petrocan-hwy7-4641,Petro-Canada,4641 Hwy 7 E,Markham,tracked,PETROCAN HWY7
+pioneer-major-mac-6375,Pioneer,6375 Major Mackenzie Dr E,Markham,tracked,PIONEER MAJMAC
+esso-woodbine-7001,Esso,7001 Woodbine Ave,Markham,tracked,ESSO WOODBINE
+esso-elgin-mills-2801,Esso,2801 Elgin Mills Rd E,Markham,tracked,ESSO ELGIN MKM

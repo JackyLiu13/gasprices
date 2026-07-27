@@ -1,20 +1,21 @@
 // gasprices — ESP32-C6 gas price indicator for Richmond Hill, ON.
 //
 // Wakes up, pulls one small JSON file, runs the verdict engine locally, and
-// shows the answer on an SSD1306 plus the onboard RGB LED. All the scraping and
+// shows the answer on the onboard LCD plus the RGB LED. All the scraping and
 // modelling lives in the backend, so tuning the data never means reflashing.
 //
 // Boards Manager: esp32 by Espressif >= 3.0  (C6 support landed in 3.0)
 // Board:          ESP32C6 Dev Module
-// Libraries:      ArduinoJson (v7), Adafruit SSD1306, Adafruit GFX
+// Hardware:       Waveshare ESP32-C6-LCD-1.47 (onboard 172x320 ST7789)
+// Libraries:      ArduinoJson (v7), Adafruit ST7735/ST7789, Adafruit GFX
 //
 // Copy config.h.example -> config.h before building.
 
 #include <Arduino.h>
 #include <HTTPClient.h>
+#include <SPI.h>
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
-#include <Wire.h>
 #include <esp_sleep.h>
 #include <time.h>
 
@@ -42,13 +43,18 @@ RTC_DATA_ATTR static struct {
   int32_t  hist[HIST_MAX];
   uint8_t  histLen;
   uint32_t epoch;          // 'epoch' field from the JSON, i.e. when it was built
+  // Cheapest tracked station. today/pred/window are already priced at this
+  // station, so this is the label for the number, not a second number.
+  char     bestLabel[20];
+  int32_t  bestSave;       // tenths of a cent vs the cheapest "regular" station
+  bool     bestConfident;  // enough observations for the offset to be trusted
 } cache;
 
 RTC_DATA_ATTR static TankState gTank = TANK_HALF;
 RTC_DATA_ATTR static uint32_t  gBoots = 0;
 
 static GpConfig gCfg;
-static bool     gHaveOled = false;
+static bool     gHaveLcd = false;
 static bool     gOnline   = false;
 static uint32_t gLastFetchMs = 0;
 
@@ -152,9 +158,21 @@ static bool fetchData() {
     cache.hist[cache.histLen++] = v.as<int32_t>();
   }
 
+  // Station block is optional — a schema-1 feed still drives the display.
+  JsonObject best = doc["best"].as<JsonObject>();
+  const char *label = best["label"] | "";
+  strncpy(cache.bestLabel, label, sizeof cache.bestLabel - 1);
+  cache.bestLabel[sizeof cache.bestLabel - 1] = '\0';
+  cache.bestSave = best["save"] | 0;
+  cache.bestConfident = best["confident"] | false;
+
   Serial.printf("data: today=%ld pred=%u hist=%u lo=%ld hi=%ld\n",
                 (long)cache.today, cache.predLen, cache.histLen,
                 (long)cache.window_lo, (long)cache.window_hi);
+  if (cache.bestLabel[0]) {
+    Serial.printf("best: %s save=%ld%s\n", cache.bestLabel, (long)cache.bestSave,
+                  cache.bestConfident ? "" : " (low confidence)");
+  }
   return true;
 }
 
@@ -171,7 +189,7 @@ static int32_t dataAgeMinutes() {
 static void decideAndRender() {
   if (cache.magic != CACHE_MAGIC) {
     setLed(gp_verdict_color(V_STALE));
-    if (gHaveOled) uiMessage("No data yet", "check wifi / URL");
+    if (gHaveLcd) uiMessage("No data yet", "check wifi / URL");
     return;
   }
 
@@ -195,7 +213,10 @@ static void decideAndRender() {
                 (long)v.level_pct, (int)gTank, (long)in.age_minutes);
 
   setLed(gp_verdict_color(v.verdict));
-  if (gHaveOled) uiRender(&in, &v, cache.hist, cache.histLen, gOnline);
+  if (gHaveLcd) {
+    uiRender(&in, &v, cache.hist, cache.histLen, gOnline,
+             cache.bestLabel, cache.bestSave, cache.bestConfident);
+  }
 }
 
 static void refresh() {
@@ -223,7 +244,7 @@ static void pollButton() {
     if (held < 40) return;                       // debounce
     if (held > 1000) {
       Serial.println("button: forced refresh");
-      if (gHaveOled) uiMessage("Refreshing...", nullptr);
+      if (gHaveLcd) uiMessage("Refreshing...", nullptr);
       refresh();
     } else {
       gTank = (TankState)((gTank + 1) % 3);
@@ -261,10 +282,9 @@ void setup() {
   pinMode(TANK_BUTTON_PIN, INPUT_PULLUP);
   setLed(0x000010);
 
-  Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN);
-  gHaveOled = uiBegin(OLED_ADDR);
-  if (!gHaveOled) Serial.println("oled: not found (LED-only mode)");
-  else uiMessage("gasprices", "connecting...");
+  gHaveLcd = uiBegin();
+  Serial.printf("lcd: %dx%d ST7789 rot=%d\n", LCD_W, LCD_H, LCD_ROTATION);
+  uiMessage("gasprices", "connecting...");
 
   refresh();
 

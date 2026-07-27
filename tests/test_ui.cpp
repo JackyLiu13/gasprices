@@ -2,7 +2,17 @@
 // vectors.csv. Compile-checks ui.h at the same time.
 //
 //   cd tests && make ui && ./test_ui
-#include <Adafruit_SSD1306.h>   // stub, from tests/stubs
+#include <Adafruit_ST7789.h>   // stub, from tests/stubs
+
+// ui.h normally picks these up from config.h, which is gitignored and carries
+// WiFi credentials. Define them here so the host build never needs it.
+#define LCD_MOSI_PIN  6
+#define LCD_SCLK_PIN  7
+#define LCD_CS_PIN   14
+#define LCD_DC_PIN   15
+#define LCD_RST_PIN  21
+#define LCD_BL_PIN   22
+#define LCD_ROTATION  1
 
 #include "../firmware/gasprices/ui.h"
 #include "../firmware/gasprices/verdict.h"
@@ -27,10 +37,10 @@ int main(int argc, char **argv) {
   std::ifstream f(path);
   if (!f) { std::fprintf(stderr, "cannot open %s\n", path); return 2; }
 
-  uiBegin(0x3C);
+  uiBegin();
   std::printf("\n== boot screen\n");
   uiMessage("gasprices", "connecting...");
-  oled.dump();
+  lcd.dump();
 
   GpConfig cfg = gp_default_config();
   std::string line;
@@ -63,13 +73,19 @@ int main(int argc, char **argv) {
     hist[13] = in.today;
 
     std::printf("\n== %s (tank=%s)\n", c[0].c_str(), c[6].c_str());
-    uiRender(&in, &v, hist, 14, in.age_minutes >= 0);
-    oled.dump();
-    if (oled.clipped()) clipped++;
+    // Alternate between a schema-2 feed (station named, savings shown) and a
+    // bare one, so both header paths and the longest plausible label are drawn.
+    bool withStation = (in.today % 2) == 0;
+    uiRender(&in, &v, hist, 14, in.age_minutes >= 0,
+             withStation ? "PETROCAN MAJMAC" : nullptr,
+             withStation ? 90 : 0,
+             withStation ? (in.today % 4) == 0 : true);
+    lcd.dump();
+    if (lcd.clipped()) clipped++;
   }
 
   if (clipped) {
-    std::printf("\n%d case(s) drew outside the 128x64 panel\n", clipped);
+    std::printf("\n%d case(s) drew outside the 320x172 panel\n", clipped);
     return 1;
   }
   std::printf("\nall cases fit the panel\n");

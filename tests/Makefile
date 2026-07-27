@@ -4,7 +4,7 @@ HDRS = ../firmware/gasprices/verdict.h
 test_verdict: test_verdict.cpp $(HDRS)
 	$(CXX) $(CXXFLAGS) -o $@ test_verdict.cpp
 
-test_ui: test_ui.cpp $(HDRS) ../firmware/gasprices/ui.h stubs/Adafruit_SSD1306.h
+test_ui: test_ui.cpp $(HDRS) ../firmware/gasprices/ui.h stubs/Adafruit_ST7789.h
 	$(CXX) $(CXXFLAGS) -Istubs -o $@ test_ui.cpp
 
 .PHONY: all test ui clean
