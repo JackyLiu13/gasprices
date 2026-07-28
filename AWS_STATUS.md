@@ -7,24 +7,26 @@ is what is actually deployed and what is left.
 
 ## TL;DR
 
-**The stack is deployed and 90% working. One thing blocks it: the GitHub token
-is read-only and needs write access.**
+**It works, end to end.** Both Lambdas run, commit to the repo, and the device's
+feed updates. Nothing is left to configure.
 
-Everything from EventBridge → Lambda → SSM secret decryption → GitHub read →
-running the price model on Lambda is proven working. The only failing step is
-the final `git push` equivalent, because the token cannot write.
+Two commits made by AWS, not by a laptop:
 
-**Your next action, ~30 seconds:**
+```
+fc470e4 log: ESSO BEAVERCRK 1.699 -> 1.698/L EXPENSIVE     (Function URL)
+f2481b0 data: 1.696/L EXPENSIVE                            (EventBridge)
+```
 
-GitHub → Settings → Developer settings → Fine-grained personal access tokens →
-**`gasprices-lambda`** → Permissions → Repository permissions → **Contents** →
-change **Read-only** to **Read and write** → Update token.
+A logged price round-trips — validate → commit → recalibrate offsets →
+republish `data.json` — in **~4 seconds**.
 
-The token *value* does not change, so SSM needs no update. Then tell me and I'll
-re-run the build.
+**What's left is judgement, not setup:**
 
-**Nothing is at risk in the meantime.** The GitHub Action is still running on
-its old schedule and still publishing, so the device keeps getting fresh data.
+1. Watch the schedule fire on its own at 05:30 / 16:30 Toronto time.
+2. Run both schedulers in parallel a few days, compare, then remove the
+   `schedule:` block from `.github/workflows/update.yml`.
+3. `backend/station_prices.csv` has one row with `source=endpoint-test` from
+   verification. It's a plausible price for that station; keep or delete it.
 
 ---
 
@@ -71,7 +73,9 @@ ran successfully on real infrastructure:
 | SSM SecureString read + KMS decrypt at runtime | ✅ IAM policy correct |
 | GitHub API read — all four CSVs pulled | ✅ |
 | Price pipeline executed on Lambda | ✅ produced a summary |
-| GitHub API **write** | ❌ **403 — token is read-only** |
+| GitHub API write | ✅ commits landing on `main` |
+| Function URL — 401 / 400 guards | ✅ all reject correctly |
+| Function URL — valid log | ✅ 200, logged, rebuilt, committed |
 
 ## The two bugs found and fixed along the way
 
@@ -85,6 +89,12 @@ the changeset, or `samconfig.toml`.
 
 **`Policies` is not valid in SAM's `Globals` section.** Caught by
 `sam validate --lint` before deploying. Moved onto each function.
+
+**Function URLs base64-encode the request body** whenever the content type
+isn't one they treat as text — which includes `curl -d`'s default of
+`application/x-www-form-urlencoded`. The handler ignored the `isBase64Encoded`
+flag, so every valid POST came back `"body is not JSON"`. It now decodes on the
+flag, which also means the ESP32 can post with whatever content type it likes.
 
 ## A verification mistake worth recording
 

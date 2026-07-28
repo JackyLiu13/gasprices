@@ -12,6 +12,7 @@ to /var/task, which is read-only, so anything writing next to the code fails.
 
 from __future__ import annotations
 
+import base64
 import json
 import os
 import pathlib
@@ -133,8 +134,19 @@ def log_handler(event, context):
     if not expected or headers.get("x-gp-secret") != expected:
         return _reply(401, {"ok": False, "error": "bad or missing x-gp-secret"})
 
+    # Function URLs base64-encode the body whenever the content type isn't one
+    # they consider text — which includes curl's default of
+    # application/x-www-form-urlencoded. Decoding unconditionally on the flag
+    # means callers don't have to remember to set a JSON content type, and an
+    # ESP32 posting with whatever header it likes still works.
+    raw = event.get("body") or "{}"
+    if event.get("isBase64Encoded"):
+        try:
+            raw = base64.b64decode(raw).decode("utf-8")
+        except Exception:
+            return _reply(400, {"ok": False, "error": "body is not decodable"})
     try:
-        payload = json.loads(event.get("body") or "{}")
+        payload = json.loads(raw)
     except json.JSONDecodeError:
         return _reply(400, {"ok": False, "error": "body is not JSON"})
 
