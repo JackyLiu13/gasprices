@@ -127,3 +127,33 @@ def predict(today_retail: float, target_retail: float, horizon: int = 5,
         p += gap * (up if gap > 0 else down)
         out.append(round(p, 4))
     return out
+
+
+# --- variants ---------------------------------------------------------------
+# Candidate predictors, all sharing predict()'s signature. Only DEFAULT_VARIANT
+# reaches docs/data.json and the device; the rest are logged to forecasts.csv
+# every run and scored against the same days.
+#
+# The point is that promoting one becomes a config change backed by a track
+# record, instead of a rewrite backed by a hunch — and that a rejected idea
+# stays rejected *on the evidence* rather than on a comment. `asymmetric` is
+# here for exactly that reason: it is the rockets-and-feathers model this
+# project measured and discarded, and keeping it scored means the day it starts
+# winning, you find out.
+#
+# Shadow-scoring costs the device nothing: these never leave the CSV.
+
+def _hold(today_retail: float, target_retail: float, horizon: int = 5) -> list[float]:
+    """Assume no move. The floor any timing model has to clear to be worth having."""
+    return [round(today_retail, 4)] * horizon
+
+
+VARIANTS = {
+    "passthrough": predict,
+    "hold": _hold,
+    "slow": lambda t, g, horizon=5: predict(t, g, horizon, up=0.35, down=0.35),
+    "fast": lambda t, g, horizon=5: predict(t, g, horizon, up=0.65, down=0.65),
+    "asymmetric": lambda t, g, horizon=5: predict(t, g, horizon, up=0.60, down=0.25),
+}
+
+DEFAULT_VARIANT = "passthrough"

@@ -1,0 +1,214 @@
+<title>gasprices — model dashboard</title>
+<style>
+/* The palette is the ST7789's, converted RGB565 -> RGB888 the same way
+   preview/render.js does it, so a green here means what a green means on the
+   device. The chrome is dimmed down from it; the data is not. */
+:root {
+  --black: #000000;
+  --panel: #0b0d0b;
+  --line: #1d201d;
+  --dim: #393c39;      /* C_DIM    */
+  --grey: #848284;     /* C_GREY   */
+  --ink: #ffffff;      /* C_WHITE  */
+  --cyan: #00ffff;     /* C_CYAN   */
+  --green: #00ff00;    /* C_GREEN  */
+  --amber: #ffa600;    /* C_AMBER  */
+  --red: #ff0000;      /* C_RED    */
+  --purple: #7b007b;   /* C_PURPLE */
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--black); color: var(--ink);
+  font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+a { color: var(--cyan); }
+
+header {
+  position: sticky; top: 0; z-index: 20; display: flex; gap: 10px;
+  align-items: center; padding: 10px 16px;
+  background: var(--panel); border-bottom: 1px solid var(--line);
+}
+h1 { font-size: 14px; margin: 0; letter-spacing: 0.08em; text-transform: uppercase; }
+h1 b { color: var(--cyan); font-weight: 600; }
+.spacer { flex: 1; }
+
+button, select, input {
+  font: inherit; color: var(--ink); background: #111411;
+  border: 1px solid var(--dim); border-radius: 3px; padding: 4px 9px;
+}
+button { cursor: pointer; }
+button:hover { border-color: var(--grey); }
+button.primary { border-color: var(--cyan); color: var(--cyan); }
+button:disabled { opacity: 0.4; cursor: default; }
+input[type=number] { width: 84px; }
+
+#status { padding: 5px 16px; min-height: 26px; color: var(--grey);
+  border-bottom: 1px solid var(--line); white-space: pre-wrap; }
+#status.ok { color: var(--green); }
+#status.bad { color: var(--red); }
+#status.busy { color: var(--amber); }
+
+main { padding: 14px 16px 60px; max-width: 1180px; }
+
+section.card {
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 8px;               /* the panel has rounded corners too */
+  padding: 12px 14px; margin-bottom: 14px;
+}
+section.card > h2 {
+  font-size: 11px; margin: 0 0 2px; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--grey);
+}
+.why { color: var(--dim); margin: 0 0 10px; font-size: 12px; }
+.why b { color: var(--grey); font-weight: 400; }
+
+.chart { width: 100%; height: auto; display: block; }
+.chart .tick { fill: var(--grey); font: 9px ui-monospace, monospace; }
+.chart .cell { fill: var(--black); font: 9px ui-monospace, monospace; }
+.chart .empty { fill: var(--dim); font: 12px ui-monospace, monospace; }
+
+.keys { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; }
+.key { color: var(--grey); font-size: 11px; display: flex; align-items: center; gap: 5px; }
+.key i { width: 12px; height: 3px; display: inline-block; }
+
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+.controls label { color: var(--grey); }
+
+table { border-collapse: collapse; width: 100%; font-size: 12px; }
+th { text-align: left; color: var(--grey); font-weight: 400; padding: 4px 8px;
+  border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 4px 8px; border-bottom: 1px solid #121412; white-space: nowrap; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+tr.best td { background: #0d1a0d; }
+.tag { font-size: 10px; padding: 1px 5px; border-radius: 2px; border: 1px solid currentColor; }
+.g { color: var(--green); } .a { color: var(--amber); } .r { color: var(--red); }
+.c { color: var(--cyan); } .d { color: var(--grey); }
+
+.stats { display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 4px; }
+.stat b { display: block; font-size: 19px; font-weight: 600; letter-spacing: -0.01em; }
+.stat span { color: var(--grey); font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; }
+
+.note { border-left: 2px solid var(--amber); padding: 6px 10px; margin: 10px 0 0;
+  color: var(--grey); background: #14100a; font-size: 12px; }
+.note.thin { border-color: var(--dim); background: #0d0f0d; }
+
+.scroll { overflow-x: auto; }
+#writes[hidden] { display: none; }
+.rowform { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+pre.out { margin: 10px 0 0; padding: 8px 10px; background: #070807;
+  border: 1px solid var(--line); border-radius: 3px; color: var(--grey);
+  max-height: 200px; overflow: auto; white-space: pre-wrap; font-size: 11px; }
+</style>
+
+<header>
+  <h1><b>gasprices</b> model dashboard</h1>
+  <div class="spacer"></div>
+  <button id="copy-all" class="primary" title="Copy a self-contained context bundle for an AI agent">Copy for AI</button>
+  <button id="reload">Reload</button>
+</header>
+<div id="status">loading…</div>
+
+<main>
+  <section class="card" id="overview">
+    <h2>Now</h2>
+    <div class="stats" id="stats"></div>
+    <div id="published-note"></div>
+  </section>
+
+  <section class="card" id="writes" hidden>
+    <h2>Log a price / rebuild</h2>
+    <p class="why">Logging one price is what calibrates a station's offset — it is
+      the highest-value thing you can do here. <b>Rebuild</b> reruns
+      <b>backend/build.py</b> and rewrites your working tree; committing stays manual.</p>
+    <div class="rowform">
+      <select id="w-station"></select>
+      <input id="w-price" type="number" step="0.001" min="0.5" max="3.5" placeholder="1.709">
+      <input id="w-date" type="date">
+      <button id="w-log">Log price</button>
+      <span class="spacer"></span>
+      <button id="w-refresh">Hard refresh</button>
+    </div>
+    <pre class="out" id="w-out" hidden></pre>
+  </section>
+
+  <section class="card">
+    <h2>Price, target and wholesale</h2>
+    <p class="why">Regional benchmark space — <b>not</b> the station-shifted numbers
+      the device shows. Cyan dots are prices you logged; hollow points are Ontario's
+      weekly survey; grey are modelled.</p>
+    <div class="controls">
+      <label>window</label>
+      <select id="range">
+        <option value="90">90 days</option>
+        <option value="365">1 year</option>
+        <option value="0" selected>all</option>
+      </select>
+    </div>
+    <div id="chart-price"></div>
+    <div class="keys" id="key-price"></div>
+  </section>
+
+  <section class="card">
+    <h2>Retail margin</h2>
+    <p class="why">Each dot is one observed price inverted through the tax stack.
+      The amber line is the 90-day rolling median — the number
+      <b>calibrate_margin()</b> would actually have used that day.</p>
+    <div id="chart-margin"></div>
+    <div id="margin-note"></div>
+  </section>
+
+  <section class="card">
+    <h2>Forecast accuracy</h2>
+    <p class="why">MAE per horizon against the only baseline that matters: assuming
+      no move at all. A bar below the grey line is the model <b>losing</b> to
+      doing nothing.</p>
+    <div class="controls">
+      <label>variant</label><select id="variant"></select>
+    </div>
+    <div id="chart-accuracy"></div>
+    <div class="keys" id="key-accuracy"></div>
+    <div class="scroll"><table id="accuracy-table"></table></div>
+    <div id="accuracy-note"></div>
+  </section>
+
+  <section class="card">
+    <h2>Verdict replay</h2>
+    <p class="why">The device engine (<b>preview/verdict.js</b>, the same one the
+      firmware runs) applied to every day of history. Bars are the verdict colour
+      from <b>ui.h</b>; the line is level%.</p>
+    <div class="controls">
+      <label>tank</label>
+      <select id="tank"><option>HALF</option><option>LOW</option><option>FULL</option></select>
+    </div>
+    <div id="chart-verdicts"></div>
+    <div class="keys" id="key-verdicts"></div>
+  </section>
+
+  <section class="card">
+    <h2>Station ladder</h2>
+    <p class="why">Offset is <b>median(observed − benchmark)</b>; MAD is its spread.
+      Where beats when by about 5×, so this table is the main axis — the timing
+      verdicts are the minor one.</p>
+    <div class="scroll"><table id="stations-table"></table></div>
+    <div id="stations-note"></div>
+  </section>
+
+  <section class="card">
+    <h2>Threshold sweep</h2>
+    <p class="why">Cents per litre saved against the fill-when-low baseline, over a
+      daily grid. White outline is the best cell; the live config is marked.</p>
+    <div class="controls"><button id="run-sweep">Run sweep</button>
+      <span class="d">~70 simulations, a second or two</span></div>
+    <div id="chart-sweep"></div>
+    <div id="sweep-note"></div>
+  </section>
+
+  <section class="card">
+    <h2>Coverage</h2>
+    <p class="why">What is actually filled in, per day. Cyan is a real measurement;
+      grey is derived or fetched. Every line above is only as good as this.</p>
+    <div id="chart-coverage"></div>
+  </section>
+</main>
+
+<script type="module" src="./app.js"></script>

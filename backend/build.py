@@ -20,9 +20,11 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
+import forecast_log  # noqa: E402
 import model  # noqa: E402
 import sources  # noqa: E402
 import stations  # noqa: E402
+from schema import HISTORY_FIELDS as FIELDS  # noqa: E402
 from verdict import Input, Tank, evaluate  # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -33,9 +35,6 @@ WINDOW_DAYS = 30      # rolling window for window_lo / window_hi
 SPARK_DAYS = 28       # how much history the OLED sparkline gets
 HORIZON = 5           # len(pred)
 STATION = "Richmond Hill, ON"
-
-FIELDS = ["date", "rbob_usd_gal", "usd_cad", "wholesale_cad_l",
-          "retail_model", "retail_survey", "retail_actual", "margin"]
 
 
 def load_history() -> list[dict]:
@@ -171,6 +170,27 @@ def main() -> int:
     # 5. Forward curve.
     pred = model.predict(today_retail, target, horizon=args.horizon)
 
+    # 5b. Log what every candidate predictor believes, in REGIONAL BENCHMARK
+    #     space — before the station rebasing below, because a forecast recorded
+    #     in "cheapest station" space silently changes meaning the day a
+    #     different station takes the lead, and would be unscorable afterwards.
+    #
+    #     Only DEFAULT_VARIANT reaches the payload. The others cost nothing on
+    #     device and mean a candidate has a real track record before anyone
+    #     proposes promoting it.
+    forecast_rows = []
+    for name, fn in model.VARIANTS.items():
+        for i, p in enumerate(fn(today_retail, target, args.horizon), start=1):
+            target_date = (dt.date.fromisoformat(today) + dt.timedelta(days=i))
+            forecast_rows.append({
+                "made_on": today,
+                "target_date": target_date.isoformat(),
+                "horizon": i,
+                "variant": name,
+                "predicted": f"{p:.4f}",
+                "basis": level_src,
+            })
+
     # 6. Upsert today's row, then take the rolling window from history.
     prior_today = next((r for r in history if r["date"] == today), {})
     row_today = {
@@ -210,7 +230,18 @@ def main() -> int:
     stations.predict_all(sts, today_retail)
 
     best = stations.cheapest(sts)
-    baseline = stations.cheapest(sts, roles=("regular",))
+    baseline = stations.baseline(sts)
+
+    # A home station with no logged price has no offset, so it cannot be priced
+    # and drops silently out of baseline selection — leaving the panel labelling
+    # some other station HOME. Say so rather than quietly measuring savings
+    # against the wrong place.
+    homes = [s for s in sts.values() if s.role == "home"]
+    if homes and (baseline is None or baseline.role != "home"):
+        print(f"warning: home station {homes[0].id} has no offset yet, so savings "
+              f"are measured against {baseline.label if baseline else 'nothing'}. "
+              f"Fix with: python3 backend/log_price.py <price> -s {homes[0].id}",
+              file=sys.stderr)
 
     # Everything the device shows is priced at the station you'd actually drive
     # to. Rebasing the whole window by one offset (rather than splicing per-day
@@ -292,6 +323,7 @@ def main() -> int:
         return 0
 
     save_history(history)
+    forecast_log.record(forecast_rows)
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(text)
     where = f" @ {best.label}" if best else ""

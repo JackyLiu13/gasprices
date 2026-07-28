@@ -30,11 +30,10 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 import model  # noqa: E402
 import sources  # noqa: E402
+from schema import HISTORY_FIELDS as FIELDS  # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 HISTORY = ROOT / "backend" / "history.csv"
-FIELDS = ["date", "rbob_usd_gal", "usd_cad", "wholesale_cad_l",
-          "retail_model", "retail_survey", "retail_actual", "margin"]
 
 
 def wholesale_by_date(rbob: list[tuple[str, float]],

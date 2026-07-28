@@ -30,8 +30,14 @@ cable.
 # Tests — run these before committing anything
 make -C tests test              # C verdict engine, 14 shared cases
 python3 backend/test_verdict.py # Python verdict engine, same 14 cases
+python3 backend/test_analytics.py  # dashboard derivations
 make -C tests ui                # renders the LCD layout as ASCII, asserts nothing clips
 make -C tests golden            # same states -> tests/out/*.ppm for the pixel diff
+
+# Dashboard — see whether the model is any good
+python3 dashboard/server.py                 # then open the URL it prints
+python3 backend/db.py                       # rebuild the derived SQLite read model
+python3 backend/backfill_forecasts.py       # one-shot: recover published forecasts from git
 
 # Backend
 python3 backend/build.py                    # fetch + model -> docs/data.json
@@ -64,15 +70,22 @@ firmware/gasprices/
 firmware/i2c_scan/  standalone I2C scanner, for external displays
 backend/            stdlib-only Python; no pip install anywhere in CI
   build.py          orchestrator: fetch -> model -> stations -> docs/data.json
-  model.py          tax stack, passthrough model, margin calibration
+  model.py          tax stack, passthrough model, margin calibration, VARIANTS
   sources.py        RBOB, FX, Ontario survey
   stations.py       per-station offset model
   verdict.py        Python mirror of verdict.h
+  schema.py         the one definition of each CSV header
+  analytics.py      pure derivations: margin series, forecast error, dispersion
+  forecast_log.py   read/write forecasts.csv
+  db.py             CSVs -> analytics.db (derived, gitignored)
   backfill.py       seed history from Ontario's weekly survey
+  backfill_forecasts.py  one-shot: recover published forecasts from git history
   backtest.py       replay history, sweep thresholds
   stations.csv      station registry (edit freely; ids must stay stable)
   station_prices.csv  observations
   history.csv       regional benchmark series
+  forecasts.csv     every forward price the model has committed to
+dashboard/          browser analytics for the model (see dashboard/README.md)
 tests/
   vectors.csv       14 shared cases — the contract between both engines
   test_verdict.cpp  C engine
@@ -197,6 +210,25 @@ Two rules that file enforces and that are easy to break by accident:
 
 Columns 0–10 of `vectors.csv` are the engine contract and are indexed by
 position; 11–17 are display-only. Append, never insert.
+
+The analytics dashboard from [`DASHBOARD.md`](DASHBOARD.md) is **built**, all six
+phases, under `dashboard/`. See [`dashboard/README.md`](dashboard/README.md).
+Three rules it introduces:
+
+- **`backend/forecasts.csv` records what the model said, and is never
+  reconstructed.** Backfilling it by re-running today's model over old inputs
+  would score a forecast that was never made, under a margin that was never
+  held. `backfill_forecasts.py` is allowed only because it reads `pred` arrays
+  that were actually published, out of git.
+- **`backend/analytics.db` is derived and gitignored.** The CSVs stay canonical.
+  Nothing writes to the database.
+- **Everything on the dashboard is in regional benchmark space.** `docs/data.json`
+  is rebased to the cheapest station; the two differ by exactly
+  `meta.station_shift_cad_l`, on purpose.
+
+[`AGENT_NOTES.md`](AGENT_NOTES.md) covers how to interpret a request on this
+project — which axis is worth optimising, what counts as evidence, and what to
+report back. Read it before proposing a model change.
 
 See [`README.md`](README.md) for the decision logic and data model,
 [`INSTALL.md`](INSTALL.md) for flashing.

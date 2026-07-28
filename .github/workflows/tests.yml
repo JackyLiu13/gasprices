@@ -26,6 +26,17 @@ jobs:
       - name: panel layout
         run: make -C tests ui
 
+      # The dashboard's derivations. The case that matters is the weekly-then-
+      # daily spacing one: a row-based window passes every other check here.
+      - name: analytics derivations
+        run: python3 backend/test_analytics.py
+
+      # analytics.db is derived and gitignored, so this only proves it still
+      # builds from the committed CSVs — a broken schema would otherwise not
+      # surface until someone opened the dashboard.
+      - name: the read model builds from the CSVs
+        run: python3 backend/db.py && python3 backend/db.py --check
+
   # The browser preview is only worth having if it shows what the panel shows.
   # This renders every vector twice — once through ui.h on the host, once through
   # preview/render.js — and requires the two to be identical.
