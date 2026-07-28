@@ -1,63 +1,53 @@
 {
  "schema": 2,
  "station": "Richmond Hill, ON",
- "updated": "2026-07-28T06:35:19Z",
- "epoch": 1785220519,
- "today_cad": 1689,
+ "updated": "2026-07-28T11:33:12Z",
+ "epoch": 1785238392,
+ "today_cad": 1698,
  "pred": [
-  1683,
-  1680,
-  1679,
-  1678,
-  1678
+  1692,
+  1689,
+  1687,
+  1686,
+  1686
  ],
- "window_lo": 1490,
- "window_hi": 1730,
+ "window_lo": 1499,
+ "window_hi": 1740,
  "hist": [
-  1539,
-  1556,
-  1697,
-  1724,
-  1730,
-  1704,
-  1701,
-  1689
+  1549,
+  1566,
+  1707,
+  1734,
+  1740,
+  1714,
+  1711,
+  1698
  ],
  "best": {
-  "id": "esso-16th-ave-3010",
-  "label": "ESSO 16TH AVE",
-  "price": 1689,
-  "offset": -95,
-  "save": 110,
-  "n": 1,
+  "id": "esso-beaver-creek",
+  "label": "ESSO BEAVERCRK",
+  "price": 1698,
+  "offset": -85,
+  "save": 89,
+  "n": 2,
   "confident": false
  },
  "regular": {
-  "id": "esso-elgin-mills-1485",
-  "label": "ESSO ELGINMILLS",
-  "price": 1799,
-  "offset": 15
+  "id": "esso-bayview-9999",
+  "label": "ESSO BAYVIEW",
+  "price": 1787,
+  "offset": 3
  },
  "stations": [
-  {
-   "id": "esso-16th-ave-3010",
-   "label": "ESSO 16TH AVE",
-   "city": "Markham",
-   "role": "favourite",
-   "price": 1689,
-   "offset": -95,
-   "n": 1,
-   "seen": "2026-07-28"
-  },
   {
    "id": "esso-beaver-creek",
    "label": "ESSO BEAVERCRK",
    "city": "Richmond Hill",
    "role": "favourite",
-   "price": 1697,
-   "offset": -87,
-   "n": 1,
-   "seen": "2026-07-27"
+   "price": 1698,
+   "offset": -85,
+   "n": 2,
+   "seen": "2026-07-28"
   },
   {
    "id": "shell-hwy7-408",
@@ -198,16 +188,6 @@
    "offset": 3,
    "n": 1,
    "seen": "2026-07-27"
-  },
-  {
-   "id": "esso-elgin-mills-1485",
-   "label": "ESSO ELGINMILLS",
-   "city": "Richmond Hill",
-   "role": "home",
-   "price": 1799,
-   "offset": 15,
-   "n": 1,
-   "seen": "2026-07-28"
   }
  ],
  "meta": {
@@ -215,13 +195,13 @@
   "days_of_history": 65,
   "observed_days": 55,
   "margin_cad_l": 0.1591,
-  "wholesale_cad_l": 1.1803,
-  "target_cad_l": 1.7719,
-  "rbob_usd_gal": 3.1677,
+  "wholesale_cad_l": 1.179,
+  "target_cad_l": 1.7711,
+  "rbob_usd_gal": 3.164,
   "usd_cad": 1.4105,
-  "benchmark_cad_l": 1.7837,
-  "station_shift_cad_l": -0.0947,
-  "stations_priced": 17
+  "benchmark_cad_l": 1.7833,
+  "station_shift_cad_l": -0.0854,
+  "stations_priced": 15
  },
  "verdict_hint": "EXPENSIVE",
  "reason_hint": "High, no dip coming"
