@@ -62,8 +62,7 @@ https://dqqych3hvv3zcdqaemwtzdlrje0xcjrs.lambda-url.ca-central-1.on.aws/
 
 ## What is proven working
 
-The failure is the *last* step of the chain, which means everything before it
-ran successfully on real infrastructure:
+Every stage verified against real infrastructure, not mocked:
 
 | Stage | Status |
 |---|---|
@@ -77,7 +76,7 @@ ran successfully on real infrastructure:
 | Function URL — 401 / 400 guards | ✅ all reject correctly |
 | Function URL — valid log | ✅ 200, logged, rebuilt, committed |
 
-## The two bugs found and fixed along the way
+## The three bugs found and fixed along the way
 
 **CloudFormation cannot resolve SecureString parameters.** The template
 originally used `Type: AWS::SSM::Parameter::Value<String>`, which resolves at
@@ -121,7 +120,7 @@ Lambda reported a bare `HTTP Error 403: Forbidden` with no reason. It now
 surfaces the message, which distinguishes a missing scope from branch
 protection from a bad path.
 
-## After the token is fixed — verification order
+## How to re-verify at any time
 
 ```bash
 # 1. Scheduled build
