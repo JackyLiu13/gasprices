@@ -1,0 +1,197 @@
+"""Lambda entry points: the scheduled build, and the price-logging endpoint.
+
+Both do the same three things — pull the CSVs out of GitHub into /tmp, run the
+existing pipeline against them, push back what changed. No business logic lives
+here. `build.py` still decides prices and `log_price.py` still owns validation;
+this file is plumbing between them and the network.
+
+GP_DATA_DIR must point at /tmp (the template sets it). Lambda unpacks the code
+to /var/task, which is read-only, so anything writing next to the code fails.
+`paths.py` exists to make that a one-line configuration rather than a rewrite.
+"""
+
+from __future__ import annotations
+
+import base64
+import json
+import os
+import pathlib
+import sys
+import traceback
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+
+import github_store  # noqa: E402
+import paths  # noqa: E402
+
+# The files the pipeline reads and may rewrite, repo-relative.
+DATA_FILES = [
+    "backend/history.csv",
+    "backend/station_prices.csv",
+    "backend/stations.csv",
+    "backend/forecasts.csv",
+]
+OUTPUT_FILES = DATA_FILES + ["docs/data.json"]
+
+# Secrets are read from SSM at runtime rather than injected as function config.
+# CloudFormation cannot resolve SecureString parameters at deploy time at all,
+# and runtime lookup means rotating a secret is one put-parameter call with no
+# redeploy. Cached per container, so a warm Lambda pays for it once.
+_secret_cache: dict[str, str] = {}
+
+
+def _secret(param_env: str, direct_env: str) -> str:
+    """Resolve a secret: the SSM parameter named by `param_env`, or the literal
+    in `direct_env` (which is how the local tests supply one)."""
+    direct = os.environ.get(direct_env)
+    if direct:
+        return direct
+
+    name = os.environ.get(param_env)
+    if not name:
+        raise RuntimeError(f"neither {direct_env} nor {param_env} is set")
+    if name not in _secret_cache:
+        # boto3 ships in the Lambda runtime; imported lazily so importing this
+        # module on a laptop without boto3 still works.
+        import boto3
+        ssm = boto3.client("ssm")
+        got = ssm.get_parameter(Name=name, WithDecryption=True)
+        _secret_cache[name] = got["Parameter"]["Value"]
+    return _secret_cache[name]
+
+
+def _store():
+    repo = os.environ.get("GP_REPO")
+    if not repo:
+        raise RuntimeError("GP_REPO must be set")
+    token = _secret("GP_GITHUB_TOKEN_PARAM", "GP_GITHUB_TOKEN")
+    return github_store.GitHubStore(repo, token,
+                                    os.environ.get("GP_BRANCH", "main"))
+
+
+def _pull(store) -> None:
+    paths.ensure_dirs()
+    store.pull(DATA_FILES, paths.DATA_DIR)
+
+
+def _push(store, message: str) -> str | None:
+    files = {}
+    for rel in OUTPUT_FILES:
+        local = paths.DATA_DIR / rel
+        if local.exists():
+            files[rel] = local.read_text()
+    return store.commit(files, message)
+
+
+def _run_build() -> None:
+    """Run build.py's main() in-process.
+
+    Imported lazily and with argv stubbed: build.py parses arguments at call
+    time, and a Lambda's argv is not something you want it reading.
+    """
+    import build
+    argv, sys.argv = sys.argv, ["build.py"]
+    try:
+        rc = build.main()
+    finally:
+        sys.argv = argv
+    if rc != 0:
+        raise RuntimeError(f"build.py exited {rc}")
+
+
+def _summary() -> str:
+    try:
+        d = json.loads((paths.DATA_JSON).read_text())
+        return f"{d['today_cad'] / 1000:.3f}/L {d['verdict_hint']}"
+    except Exception:
+        return "rebuild"
+
+
+# ---------------------------------------------------------------------------
+# Scheduled build — EventBridge
+# ---------------------------------------------------------------------------
+def build_handler(event, context):
+    store = _store()
+    _pull(store)
+    _run_build()
+    sha = _push(store, f"data: {_summary()}")
+    return {"ok": True, "commit": sha, "summary": _summary()}
+
+
+# ---------------------------------------------------------------------------
+# Logging endpoint — Lambda Function URL
+# ---------------------------------------------------------------------------
+def _reply(code: int, body: dict) -> dict:
+    return {"statusCode": code,
+            "headers": {"content-type": "application/json"},
+            "body": json.dumps(body)}
+
+
+def log_handler(event, context):
+    # Function URLs lowercase header names, but be tolerant anyway.
+    headers = {k.lower(): v for k, v in (event.get("headers") or {}).items()}
+    expected = _secret("GP_INGEST_SECRET_PARAM", "GP_INGEST_SECRET")
+    if not expected or headers.get("x-gp-secret") != expected:
+        return _reply(401, {"ok": False, "error": "bad or missing x-gp-secret"})
+
+    # Function URLs base64-encode the body whenever the content type isn't one
+    # they consider text — which includes curl's default of
+    # application/x-www-form-urlencoded. Decoding unconditionally on the flag
+    # means callers don't have to remember to set a JSON content type, and an
+    # ESP32 posting with whatever header it likes still works.
+    raw = event.get("body") or "{}"
+    if event.get("isBase64Encoded"):
+        try:
+            raw = base64.b64decode(raw).decode("utf-8")
+        except Exception:
+            return _reply(400, {"ok": False, "error": "body is not decodable"})
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError:
+        return _reply(400, {"ok": False, "error": "body is not JSON"})
+
+    station = str(payload.get("station") or "").strip()
+    source = str(payload.get("source") or "dispatch").strip()
+
+    # An absent station is NOT harmless: log_price treats "no station" as "this
+    # is the regional benchmark" and would overwrite the series the whole model
+    # is anchored to. Same guard as the GitHub Action.
+    if not station:
+        return _reply(400, {"ok": False, "error": "station is required"})
+    try:
+        price = float(payload.get("price"))
+    except (TypeError, ValueError):
+        return _reply(400, {"ok": False, "error": "price must be a number"})
+
+    store = _store()
+    _pull(store)
+
+    import log_price
+    known = log_price.stationlib.load_stations()
+    sid = log_price.resolve(station, known)
+    if sid is None:
+        return _reply(400, {"ok": False, "error": f"unknown station {station!r}"})
+    if not 0.5 <= price <= 3.5:
+        return _reply(400, {"ok": False, "error": f"{price} is not a pump price"})
+
+    import datetime as dt
+    day = dt.date.today().isoformat()
+    log_price.log_station(price, day, sid, known[sid].label, source)
+
+    # Rebuild immediately so the device sees the new offset on its next fetch
+    # rather than waiting for the next scheduled run.
+    try:
+        _run_build()
+    except Exception:
+        traceback.print_exc()
+        # The price is still worth keeping even if the rebuild failed — a
+        # transient upstream outage shouldn't discard what you typed at a pump.
+        _push(store, f"log: {known[sid].label} {price:.3f} (rebuild failed)")
+        return _reply(202, {"ok": True, "logged": True, "rebuilt": False,
+                            "station": sid, "price": price})
+
+    sha = _push(store, f"log: {known[sid].label} {price:.3f} -> {_summary()}")
+    return _reply(200, {"ok": True, "logged": True, "rebuilt": True,
+                        "station": sid, "label": known[sid].label,
+                        "price": price, "commit": sha,
+                        "summary": _summary()})

@@ -22,6 +22,41 @@ jobs:
         run: python3 backend/test_verdict.py
 
       # Compiles ui.h against stub display headers and asserts nothing is drawn
-      # off the 128x64 panel.
-      - name: OLED layout
+      # off the 320x172 panel.
+      - name: panel layout
         run: make -C tests ui
+
+      # The dashboard's derivations. The case that matters is the weekly-then-
+      # daily spacing one: a row-based window passes every other check here.
+      - name: analytics derivations
+        run: python3 backend/test_analytics.py
+
+      # analytics.db is derived and gitignored, so this only proves it still
+      # builds from the committed CSVs — a broken schema would otherwise not
+      # surface until someone opened the dashboard.
+      - name: the read model builds from the CSVs
+        run: python3 backend/db.py && python3 backend/db.py --check
+
+  # The browser preview is only worth having if it shows what the panel shows.
+  # This renders every vector twice — once through ui.h on the host, once through
+  # preview/render.js — and requires the two to be identical.
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # A hand-edited layout.h would silently outrank layout.json.
+      - name: layout.h is in sync with layout.json
+        run: python3 preview/tools/gen_layout.py --check
+
+      - name: firmware renderer -> golden images
+        run: make -C tests golden
+
+      - name: preview matches the firmware, pixel for pixel
+        run: node preview/tests/compare_render.mjs

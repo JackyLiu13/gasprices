@@ -1,0 +1,132 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  gasprices — scheduled price build + a logging endpoint for phone and device.
+  Reads and writes the repo's CSVs through the GitHub API; GitHub Pages keeps
+  serving data.json, so the firmware needs no change.
+
+Parameters:
+  GitHubRepo:
+    Type: String
+    Default: JackyLiu13/gasprices
+  GitHubBranch:
+    Type: String
+    Default: main
+  # Only the parameter NAMES. The values are read at runtime.
+  #
+  # The obvious approach — Type: AWS::SSM::Parameter::Value<String> — cannot
+  # work here: CloudFormation resolves those at deploy time and **does not
+  # support SecureString**, which is exactly what a secret should be stored as.
+  # Fetching at runtime is also better: rotating a secret is one put-parameter
+  # call, with no redeploy, and the value never enters the template, the
+  # changeset, or samconfig.toml.
+  GitHubTokenParam:
+    Type: String
+    Default: /gasprices/github_token
+  IngestSecretParam:
+    Type: String
+    Default: /gasprices/ingest_secret
+
+Globals:
+  Function:
+    Runtime: python3.12
+    CodeUri: backend/
+    # 512 MB rather than 128: Lambda scales CPU with memory, and billing is
+    # GB-seconds, so a function that finishes 4x faster at 4x the memory costs
+    # about the same while spending far less wall-clock waiting on HTTP.
+    MemorySize: 512
+    # build.py makes several upstream calls (Yahoo 3mo, frankfurter, the ~1 MB
+    # Ontario CSV). Ten seconds is typical; 60 is headroom, not a target.
+    Timeout: 60
+    Architectures: [arm64]        # Graviton: ~20% cheaper per GB-second
+    Environment:
+      Variables:
+        # THE reason paths.py exists. /var/task is read-only.
+        GP_DATA_DIR: /tmp/gp
+        GP_DB_PATH: /tmp/gp/analytics.db
+        GP_REPO: !Ref GitHubRepo
+        GP_BRANCH: !Ref GitHubBranch
+        GP_GITHUB_TOKEN_PARAM: !Ref GitHubTokenParam
+        GP_INGEST_SECRET_PARAM: !Ref IngestSecretParam
+    # Deliberately NO VpcConfig. This function needs the public internet, and a
+    # VPC Lambda reaches it only via a NAT Gateway at ~$32/month — thirty times
+    # the rest of this stack, for no benefit.
+
+Resources:
+  BuildFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: gasprices-build
+      Handler: lambda_handlers.build_handler
+      # Policies must sit on each function; SAM rejects them in Globals.
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [ssm:GetParameter]
+              Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/gasprices/*
+            # A SecureString also needs the key. ViaService scopes this so the
+            # grant only works for calls arriving through SSM, not arbitrary
+            # decryption with the account's key.
+            - Effect: Allow
+              Action: [kms:Decrypt]
+              Resource: "*"
+              Condition:
+                StringEquals:
+                  kms:ViaService: !Sub ssm.${AWS::Region}.amazonaws.com
+      Events:
+        Schedule:
+          Type: ScheduleV2          # EventBridge Scheduler
+          Properties:
+            # Timezone-aware, unlike GitHub's UTC-only cron. This is what fixes
+            # the class of bug where a run near midnight files under the wrong
+            # calendar day.
+            ScheduleExpression: "cron(30 5,16 * * ? *)"
+            ScheduleExpressionTimezone: America/Toronto
+
+  LogFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: gasprices-log
+      Handler: lambda_handlers.log_handler
+      # Policies must sit on each function; SAM rejects them in Globals.
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [ssm:GetParameter]
+              Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/gasprices/*
+            # A SecureString also needs the key. ViaService scopes this so the
+            # grant only works for calls arriving through SSM, not arbitrary
+            # decryption with the account's key.
+            - Effect: Allow
+              Action: [kms:Decrypt]
+              Resource: "*"
+              Condition:
+                StringEquals:
+                  kms:ViaService: !Sub ssm.${AWS::Region}.amazonaws.com
+      FunctionUrlConfig:
+        # NONE means "no AWS SigV4", not "no auth" — the handler requires a
+        # shared secret header and returns 401 without it. AWS_IAM would mean
+        # implementing SigV4 signing on an ESP32: a lot of firmware for one
+        # endpoint, when the secret is rotatable in one CLI call.
+        AuthType: NONE
+
+  # CloudWatch defaults to retaining logs forever, which is a slow cost leak
+  # rather than a spike. Pin both.
+  BuildLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${BuildFunction}
+      RetentionInDays: 7
+  LogLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${LogFunction}
+      RetentionInDays: 7
+
+Outputs:
+  LogEndpoint:
+    Description: POST prices here with an x-gp-secret header
+    Value: !GetAtt LogFunctionUrl.FunctionUrl
+  BuildFunctionName:
+    Description: aws lambda invoke --function-name <this> /dev/stdout
+    Value: !Ref BuildFunction

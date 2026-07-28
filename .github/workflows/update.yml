@@ -13,6 +13,18 @@ on:
         description: "Pump price you actually saw today, $/L (optional)"
         required: false
 
+  # One-tap logging from a phone Shortcut or from the device itself:
+  #
+  #   curl -X POST https://api.github.com/repos/OWNER/REPO/dispatches \
+  #     -H "Authorization: Bearer $PAT" -H "Accept: application/vnd.github+json" \
+  #     -d '{"event_type":"log-price",
+  #          "client_payload":{"station":"beaver","price":1.709,"source":"phone"}}'
+  #
+  # Only fires on the DEFAULT BRANCH — GitHub ignores repository_dispatch for
+  # workflows living anywhere else, so this is inert until it reaches main.
+  repository_dispatch:
+    types: [log-price]
+
 # Never let two runs write history.csv at once.
 concurrency:
   group: update-price-data
@@ -24,6 +36,12 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # Runners are UTC. The crons land mid-afternoon UTC so they agree with the
+    # Toronto date either way, but a dispatch sent after 8pm ET is already
+    # tomorrow in UTC — it would log a price, and write a history row, dated a
+    # day ahead. Pin the job to Toronto so `date.today()` means what it says.
+    env:
+      TZ: America/Toronto
     steps:
       - uses: actions/checkout@v4
 
@@ -35,6 +53,36 @@ jobs:
       - name: Verify the decision engine still agrees with the firmware
         run: python3 backend/test_verdict.py
 
+      - name: Log a price sent by dispatch
+        if: github.event_name == 'repository_dispatch'
+        env:
+          # Bound to env, never interpolated into the script text. The payload
+          # is whatever the token holder sent, so inlining ${{ }} into `run:`
+          # would be a shell injection. Quoted "$VAR" is inert.
+          STATION: ${{ github.event.client_payload.station }}
+          PRICE: ${{ github.event.client_payload.price }}
+          SOURCE: ${{ github.event.client_payload.source }}
+        run: |
+          # An empty station is NOT harmless: log_price.py treats "no station"
+          # as "this is the regional benchmark", so a payload that merely forgot
+          # the field would quietly overwrite the series the whole model is
+          # anchored to. Fail instead. Regional prices have their own path, the
+          # local_price input on workflow_dispatch.
+          if [ -z "$STATION" ]; then
+            echo "::error::client_payload.station is required" >&2
+            exit 1
+          fi
+
+          # --opt=value form, and `--` before the positional, so a value that
+          # happens to start with "-" is still read as a value and not a flag.
+          # log_price.py owns the rest of the validation: range, station
+          # resolution, future dates. A bad payload exits non-zero and fails the
+          # run before anything is committed.
+          python3 backend/log_price.py \
+            --station="$STATION" \
+            --source="${SOURCE:-dispatch}" \
+            -- "$PRICE"
+
       - name: Build data.json
         env:
           LOCAL_PRICE_OVERRIDE: ${{ github.event.inputs.local_price }}
@@ -44,7 +92,10 @@ jobs:
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/data.json backend/history.csv
+          # station_prices.csv matters: without it a dispatched price would be
+          # logged, folded into the published offsets, and then discarded with
+          # the runner — so the very next run would forget it.
+          git add docs/data.json backend/history.csv backend/station_prices.csv
           if git diff --staged --quiet; then
             echo "no change"
           else

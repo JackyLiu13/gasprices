@@ -2,8 +2,10 @@
 # because station_prices.csv references them.
 #
 # role:
-#   regular    a station you'd default to. Savings are measured against the
-#              cheapest of these, so it's the "what I'd otherwise pay" baseline.
+#   home       your home station — the one savings are measured against, and
+#              the one the panel labels HOME. At most one. If none is set the
+#              baseline falls back to the cheapest `regular`.
+#   regular    a station you'd default to. Baseline fallback when no home is set.
 #   favourite  one you actively like / would detour for.
 #   tracked    watched for history and prediction only.
 #
@@ -13,7 +15,7 @@ esso-beaver-creek,Esso,255 E Beaver Creek Rd,Richmond Hill,favourite,ESSO BEAVER
 shell-leslie-9240,Shell,9240 Leslie St,Richmond Hill,favourite,SHELL LESLIE
 esso-16th-ave-3010,Esso,3010 16th Ave,Markham,favourite,ESSO 16TH AVE
 esso-bayview-9999,Esso,9999 Bayview Ave,Richmond Hill,regular,ESSO BAYVIEW
-esso-elgin-mills-1485,Esso,1485 Elgin Mills Rd E,Richmond Hill,regular,ESSO ELGINMILLS
+esso-elgin-mills-1485,Esso,1485 Elgin Mills Rd E,Richmond Hill,home,ESSO ELGINMILLS
 shell-hwy7-408,Shell,408 Hwy 7 E,Richmond Hill,tracked,SHELL HWY7
 esso-yonge-10579,Esso,10579 Yonge St,Richmond Hill,tracked,ESSO YONGE 105
 petrocan-bayview-9277,Petro-Canada,9277 Bayview Ave,Richmond Hill,tracked,PETROCAN BAYVW
