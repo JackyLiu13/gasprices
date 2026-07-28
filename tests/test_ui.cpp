@@ -76,10 +76,15 @@ int main(int argc, char **argv) {
     // Alternate between a schema-2 feed (station named, savings shown) and a
     // bare one, so both header paths and the longest plausible label are drawn.
     bool withStation = (in.today % 2) == 0;
+    // Alternate cheapest / not-cheapest too, so both header tags are drawn and
+    // the widest one ("+9.0c vs best" after a 15-char label) is checked to fit.
+    bool cheapest = (in.today % 4) == 0;
     uiRender(&in, &v, hist, 14, in.age_minutes >= 0,
              withStation ? "PETROCAN MAJMAC" : nullptr,
              withStation ? 90 : 0,
-             withStation ? (in.today % 4) == 0 : true);
+             withStation ? cheapest : true,
+             withStation ? 3 : 0, withStation ? 15 : 0,
+             withStation && cheapest, (withStation && !cheapest) ? 90 : 0);
     lcd.dump();
     if (lcd.clipped()) clipped++;
   }

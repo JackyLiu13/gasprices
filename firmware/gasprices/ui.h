@@ -147,7 +147,8 @@ static void uiRender(const GpInput *in, const GpVerdict *v,
                      const int32_t *hist, uint8_t histLen, bool online,
                      const char *bestLabel = nullptr, int32_t bestSave = 0,
                      bool bestConfident = true,
-                     uint8_t stationIdx = 0, uint8_t stationCount = 0) {
+                     uint8_t stationIdx = 0, uint8_t stationCount = 0,
+                     bool isCheapest = false, int32_t vsBest = 0) {
   char buf[40], tmp[16];
   const uint16_t vc = uiVerdictColor(v->verdict);
 
@@ -165,6 +166,19 @@ static void uiRender(const GpInput *in, const GpVerdict *v,
                (unsigned)(stationIdx + 1), (unsigned)stationCount);
       lcd.setTextColor(C_DIM);
       lcd.print(buf);
+
+      // Say outright whether this is the best price available, and if not, what
+      // it costs to stop here instead. Scrolling a list of near-identical
+      // numbers otherwise makes you do that subtraction in your head.
+      if (isCheapest) {
+        lcd.setTextColor(C_GREEN);
+        lcd.print(F("  CHEAPEST"));
+      } else if (vsBest > 0) {
+        gp_fmt_cents(vsBest, tmp, sizeof tmp);
+        snprintf(buf, sizeof buf, "  +%s vs best", tmp);
+        lcd.setTextColor(C_AMBER);
+        lcd.print(buf);
+      }
     }
   } else {
     lcd.print(F("RICHMOND HILL"));
@@ -178,9 +192,11 @@ static void uiRender(const GpInput *in, const GpVerdict *v,
   lcd.drawFastHLine(0, 14, LCD_W, C_DIM);
 
   // --- today's price, size 4: 6 glyphs * 24px = 144px ---
+  // Green means "nothing tracked is cheaper right now". Carrying that on the
+  // price itself makes it readable across the room, where the header tag isn't.
   gp_fmt_price(in->today, buf, sizeof buf);
   lcd.setTextSize(4);
-  lcd.setTextColor(C_WHITE);
+  lcd.setTextColor(isCheapest && stationCount > 1 ? C_GREEN : C_WHITE);
   lcd.setCursor(6, 22);
   lcd.print(buf);
 

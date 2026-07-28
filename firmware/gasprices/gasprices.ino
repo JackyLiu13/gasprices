@@ -233,6 +233,8 @@ static void decideAndRender() {
   const char *label = cache.bestLabel;
   int32_t shownPrice = cache.today;
   bool confident = cache.bestConfident;
+  bool isCheapest = false;
+  int32_t vsBest = 0;
 
   if (cache.stationCount > 0 && gStationIdx < cache.stationCount) {
     const auto &st = cache.stations[gStationIdx];
@@ -245,6 +247,12 @@ static void decideAndRender() {
     label      = st.label;
     shownPrice = st.price;
     confident  = st.observations >= 3;
+
+    // Compare against the lowest price, not against index 0. Stations tie all
+    // the time — four sat at 179.9 in the seed data — and calling only the
+    // first of them "cheapest" would be arbitrary and look like a bug.
+    vsBest     = st.price - cache.stations[0].price;
+    isCheapest = vsBest <= 0;
   }
 
   GpInput in;
@@ -268,16 +276,17 @@ static void decideAndRender() {
   char price[16], reason[48];
   gp_fmt_price(in.today, price, sizeof price);
   gp_reason(&in, &v, reason, sizeof reason);
-  Serial.printf("verdict: %s @ %s (%u/%u) | %s | %s | level=%ld%% tank=%d age=%ldm\n",
+  Serial.printf("verdict: %s @ %s (%u/%u)%s | %s | %s | level=%ld%% tank=%d age=%ldm\n",
                 price, label, (unsigned)(gStationIdx + 1),
                 (unsigned)(cache.stationCount ? cache.stationCount : 1),
+                cache.stationCount > 1 ? (isCheapest ? " CHEAPEST" : "") : "",
                 gp_verdict_name(v.verdict), reason,
                 (long)v.level_pct, (int)gTank, (long)in.age_minutes);
 
   setLed(gp_verdict_color(v.verdict));
   if (gHaveLcd) {
     uiRender(&in, &v, hist, cache.histLen, gOnline, label, save, confident,
-             gStationIdx, cache.stationCount);
+             gStationIdx, cache.stationCount, isCheapest, vsBest);
   }
 }
 
