@@ -1,6 +1,37 @@
 # Plan: browser preview + layout editor for the ST7789 panel
 
-> Status: **plan only — not implemented.**
+> Status: **built.** Phases A–E all landed; it lives in
+> [`preview/`](preview/README.md) as a self-contained sub-project. This file is
+> kept as the design record. Where the build differs from the plan:
+>
+> - **Files moved.** The plan said `web/` and a top-level `tools/`; everything the
+>   project owns is under `preview/` instead, so it reads as one thing you can
+>   take in at a glance. The exceptions are the files the firmware and the host
+>   harness own first — `layout.json`/`layout.h`, `tests/stubs/`, `test_ui.cpp`,
+>   `vectors.csv` — which stayed where they were.
+> - **layout.json landed in Phase B, not D.** `render.js` reads it from the start,
+>   which means the Phase B pixel diff *is* the proof that layout.json's numbers
+>   match `ui.h`'s literals. Phase D then only had to switch the C side over, with
+>   the same diff proving that change was also zero-pixel. Both halves end up
+>   verified instead of one.
+> - **Verification 1 needed restating.** "ASCII output unchanged" cannot hold while
+>   also replacing the approximated primitives: Bresenham draws different pixels
+>   than DDA, by design. What is unchanged is every *text* row; the sparkline
+>   rows shift, which is the fidelity fix landing. `dump()` shades from a
+>   graphics-only plane so real glyph pixels don't fog the terminal view.
+> - **The divider's colour stayed in C.** The plan listed it as a tunable, but
+>   making one element's colour data while every other element's stays in C is
+>   inconsistent, and inconsistency here is the first step towards the freeform
+>   builder the plan deliberately didn't choose.
+> - **A JS engine port was needed.** Not in the plan, but the renderer draws
+>   strings the engine produces, so it cannot render a frame without one. It is
+>   held to `vectors.csv`'s `expect_*` columns like the other two.
+> - **Collision warnings are text-vs-text only.** "Any two boxes overlap" fires on
+>   every frame, because the verdict name is supposed to sit inside the verdict
+>   bar. See `preview/README.md`.
+> - **`vectors.csv` gained one behaviour change**, not just columns:
+>   `flat_window_no_signal` now describes a dearer-than-usual station, which
+>   covers the negative-`bestSave` branch that nothing exercised before.
 
 ## Context
 

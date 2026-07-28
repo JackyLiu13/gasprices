@@ -77,6 +77,10 @@ python3 backend/test_verdict.py   # Python engine
 make -C tests ui            # renders the real LCD layout in your terminal
 ```
 
+There is a third copy of the engine, in JS, for the browser preview — see
+[`preview/`](preview/README.md). It reads the same `vectors.csv` and is checked
+against the same `expect_*` columns.
+
 `make -C tests ui` compiles `ui.h` against stub display headers and asserts
 nothing is drawn off the 320×172 panel:
 
@@ -94,6 +98,14 @@ nothing is drawn off the 320×172 panel:
 
 (Doubled glyphs are size-2 text. Reason strings are hard-capped at 21
 characters — one panel line — and the test fails if one grows past it.)
+
+That view is quick to read in a terminal but it is a character grid, not real
+glyphs. For a pixel-faithful preview of every state — and for dragging the layout
+around instead of editing coordinates by hand — see [`preview/`](preview/README.md):
+
+```bash
+python3 preview/server.py   # then open http://127.0.0.1:8765/preview/
+```
 
 ## The data
 
@@ -326,6 +338,8 @@ firmware/gasprices/
   gasprices.ino     wifi, fetch, sleep scheduling, button
   verdict.h         the decision engine (no Arduino deps — compiles on host)
   ui.h              ST7789 layout
+  layout.json       where everything sits on the panel — source of truth
+  layout.h          GENERATED from layout.json
   config.h.example  copy to config.h
 backend/
   build.py          orchestrator: fetch -> model -> docs/data.json
@@ -336,10 +350,11 @@ backend/
   backtest.py       replay history, sweep thresholds
   log_price.py      record what you actually paid
 tests/
-  vectors.csv       shared truth for both engines
+  vectors.csv       shared truth for every engine and the layout
   test_verdict.cpp  C engine
-  test_ui.cpp       renders the LCD layout to your terminal
-  stubs/            fake Adafruit headers for host builds
+  test_ui.cpp       renders the LCD layout to your terminal, and to *.ppm
+  stubs/            host stand-ins for the Adafruit headers, real pixels
+preview/            browser preview + drag layout editor (see its README)
 ```
 
 ## Known rough edges
