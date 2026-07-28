@@ -7,7 +7,14 @@
 // (the "centred" branch covers 1.47" panels) — always init in native portrait
 // and rotate afterwards, or the offset lands on the wrong axis.
 //
-// Layout, 320x172:
+// Where everything sits is layout.json's business, not this file's: every
+// coordinate below comes from an L_* const in the generated layout.h, so the
+// layout can be dragged around in the browser preview (see preview/README.md)
+// without touching C. What stays here is everything a coordinate cannot express
+// — when an element is drawn at all, how the right-aligned ones are measured,
+// how the bar and the sparkline are scaled, and what colour anything is.
+//
+// Layout, 320x172, as currently generated:
 //   y   0..10   header: station, and how old the data is
 //   y  14       divider
 //   y  22..54   today's price, size 4        | right: level %, and a level bar
@@ -21,6 +28,7 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_ST7789.h>
 
+#include "layout.h"
 #include "verdict.h"
 
 // Native panel geometry. Landscape is what we actually draw in.
@@ -28,6 +36,13 @@
 #define LCD_NATIVE_H 320
 #define LCD_W 320
 #define LCD_H 172
+
+// The panel size is soldered-down hardware, so layout.json does not get to
+// disagree about it. Catch that at compile time rather than as a screen full of
+// clipped pixels.
+#if LCD_W != L_PANEL_W || LCD_H != L_PANEL_H
+#error "layout.json panel size disagrees with LCD_W/LCD_H"
+#endif
 
 // RGB565. The LED colours in verdict.h are tuned for a 48/255-dimmed WS2812 and
 // look muddy on a backlit panel, so the screen gets its own brighter set.
@@ -93,21 +108,24 @@ static bool uiBegin(void) {
 // Full-screen single message, for boot and hard failures.
 static void uiMessage(const char *title, const char *detail) {
   lcd.fillScreen(C_BLACK);
-  lcd.setTextSize(3);
+  lcd.setTextSize(L_message_title.size);
   lcd.setTextColor(C_WHITE);
-  lcd.setCursor((LCD_W - uiTextW(title, 3)) / 2, 58);
+  lcd.setCursor((LCD_W - uiTextW(title, L_message_title.size)) / 2,
+                L_message_title.y);
   lcd.print(title);
   if (detail) {
-    lcd.setTextSize(2);
+    lcd.setTextSize(L_message_detail.size);
     lcd.setTextColor(C_GREY);
-    lcd.setCursor((LCD_W - uiTextW(detail, 2)) / 2, 96);
+    lcd.setCursor((LCD_W - uiTextW(detail, L_message_detail.size)) / 2,
+                  L_message_detail.y);
     lcd.print(detail);
   }
 }
 
 // hist[] is the rolling window in tenths of a cent; the last entry is today.
 static void uiSparkline(const int32_t *hist, uint8_t n, int16_t x, int16_t y,
-                        int16_t w, int16_t h, uint16_t line, uint16_t dot) {
+                        int16_t w, int16_t h, int16_t dotR, uint16_t line,
+                        uint16_t dot) {
   if (n < 2) return;
 
   int32_t lo = hist[0], hi = hist[0];
@@ -118,10 +136,11 @@ static void uiSparkline(const int32_t *hist, uint8_t n, int16_t x, int16_t y,
   int32_t span = hi - lo;
   if (span <= 0) span = 1;
 
-  // Inset by two pixels on every side so the radius-2 "today" dot at the last
-  // point still lands entirely on the panel instead of being clipped in half.
-  int16_t x0 = x + 2, x1 = x + w - 3;
-  int16_t y0 = y + 2, y1 = y + h - 3;
+  // Inset by the dot radius on every side so the "today" dot at the last point
+  // still lands entirely on the panel instead of being clipped in half. This is
+  // the bug the host harness was written to catch, so keep it tied to dotR.
+  int16_t x0 = x + dotR, x1 = x + w - dotR - 1;
+  int16_t y0 = y + dotR, y1 = y + h - dotR - 1;
   if (x1 <= x0 || y1 <= y0) return;
 
   int16_t prevX = 0, prevY = 0;
@@ -134,12 +153,9 @@ static void uiSparkline(const int32_t *hist, uint8_t n, int16_t x, int16_t y,
     prevY = py;
   }
   // Fat dot on today so the eye lands on "where am I in this range".
-  lcd.fillCircle(prevX, prevY, 2, dot);
+  lcd.fillCircle(prevX, prevY, dotR, dot);
 }
 
-// bestLabel/bestSave describe which station the price on screen belongs to.
-// today/window/hist are all already priced at that station, so the header names
-// the number rather than adding a competing one.
 // bestLabel/bestSave describe the station currently on screen. today/window/hist
 // are already priced at it, so the header names the number rather than adding a
 // competing one. bestSave may be negative when browsing a pricier station.
@@ -155,9 +171,9 @@ static void uiRender(const GpInput *in, const GpVerdict *v,
   lcd.fillScreen(C_BLACK);
 
   // --- header: which station this price is for ---
-  lcd.setTextSize(1);
+  lcd.setTextSize(L_header.size);
   lcd.setTextColor(C_CYAN);
-  lcd.setCursor(6, 2);
+  lcd.setCursor(L_header.x, L_header.y);
   if (bestLabel && bestLabel[0]) {
     lcd.print(bestLabel);
     if (!bestConfident) lcd.print(F(" ?"));   // offset from very few samples
@@ -184,52 +200,56 @@ static void uiRender(const GpInput *in, const GpVerdict *v,
     lcd.print(F("RICHMOND HILL"));
   }
   if (!online) {
-    uiRightText("OFF", LCD_W - 6, 2, 1, C_AMBER);
+    uiRightText("OFF", L_age.x, L_age.y, L_age.size, C_AMBER);
   } else if (in->age_minutes >= 0) {
     snprintf(buf, sizeof buf, "%ldh", (long)(in->age_minutes / 60));
-    uiRightText(buf, LCD_W - 6, 2, 1, C_GREY);
+    uiRightText(buf, L_age.x, L_age.y, L_age.size, C_GREY);
   }
-  lcd.drawFastHLine(0, 14, LCD_W, C_DIM);
+  lcd.drawFastHLine(L_divider.x, L_divider.y, L_divider.w, C_DIM);
 
   // --- today's price, size 4: 6 glyphs * 24px = 144px ---
   // Green means "nothing tracked is cheaper right now". Carrying that on the
   // price itself makes it readable across the room, where the header tag isn't.
   gp_fmt_price(in->today, buf, sizeof buf);
-  lcd.setTextSize(4);
+  lcd.setTextSize(L_price.size);
   lcd.setTextColor(isCheapest && stationCount > 1 ? C_GREEN : C_WHITE);
-  lcd.setCursor(6, 22);
+  lcd.setCursor(L_price.x, L_price.y);
   lcd.print(buf);
 
   // --- right column: level % over a proportional bar ---
   if (v->level_pct >= 0) {
     snprintf(buf, sizeof buf, "LVL %ld%%", (long)v->level_pct);
-    uiRightText(buf, LCD_W - 6, 24, 2, C_GREY);
+    uiRightText(buf, L_level_text.x, L_level_text.y, L_level_text.size, C_GREY);
 
-    const int16_t bx = 170, by = 46, bw = LCD_W - 6 - bx, bh = 12;
-    lcd.drawRect(bx, by, bw, bh, C_DIM);
-    int32_t fill = ((int32_t)(bw - 2) * v->level_pct) / 100;
-    if (fill > 0) lcd.fillRect(bx + 1, by + 1, (int16_t)fill, bh - 2, vc);
+    lcd.drawRect(L_level_bar.x, L_level_bar.y, L_level_bar.w, L_level_bar.h,
+                 C_DIM);
+    int32_t fill = ((int32_t)(L_level_bar.w - 2) * v->level_pct) / 100;
+    if (fill > 0)
+      lcd.fillRect(L_level_bar.x + 1, L_level_bar.y + 1, (int16_t)fill,
+                   L_level_bar.h - 2, vc);
   }
 
   // --- verdict bar, filled so it reads at a glance across the room ---
-  lcd.fillRect(0, 62, LCD_W, 38, vc);
+  lcd.fillRect(L_verdict_bar.x, L_verdict_bar.y, L_verdict_bar.w,
+               L_verdict_bar.h, vc);
   const char *name = gp_verdict_name(v->verdict);
-  lcd.setTextSize(3);
+  lcd.setTextSize(L_verdict_text.size);
   lcd.setTextColor(uiOnVerdict(v->verdict));
-  lcd.setCursor((LCD_W - uiTextW(name, 3)) / 2, 69);
+  lcd.setCursor((LCD_W - uiTextW(name, L_verdict_text.size)) / 2,
+                L_verdict_text.y);
   lcd.print(name);
 
   // --- reason: 21 chars max, size 2 = 252px of the 320 available ---
   gp_reason(in, v, buf, sizeof buf);
-  lcd.setTextSize(2);
+  lcd.setTextSize(L_reason.size);
   lcd.setTextColor(C_WHITE);
-  lcd.setCursor(6, 106);
+  lcd.setCursor(L_reason.x, L_reason.y);
   lcd.print(buf);
 
   // --- tank state, and the wait/jump number ---
-  lcd.setTextSize(1);
+  lcd.setTextSize(L_tank.size);
   lcd.setTextColor(C_GREY);
-  lcd.setCursor(6, 126);
+  lcd.setCursor(L_tank.x, L_tank.y);
   lcd.print(in->tank == TANK_FULL ? F("TANK FULL")
             : in->tank == TANK_LOW ? F("TANK LOW") : F("TANK HALF"));
 
@@ -240,28 +260,29 @@ static void uiRender(const GpInput *in, const GpVerdict *v,
   if (bestSave > 0) {
     gp_fmt_cents(bestSave, tmp, sizeof tmp);
     snprintf(buf, sizeof buf, "SAVE %s", tmp);
-    uiRightText(buf, LCD_W - 6, 126, 1, C_GREEN);
+    uiRightText(buf, L_savings.x, L_savings.y, L_savings.size, C_GREEN);
   } else if (bestSave < 0) {
     // Browsing a station dearer than your usual one — say so in red rather
     // than showing nothing, so cycling never looks like it stopped working.
     gp_fmt_cents(-bestSave, tmp, sizeof tmp);
     snprintf(buf, sizeof buf, "+%s", tmp);
-    uiRightText(buf, LCD_W - 6, 126, 1, C_RED);
+    uiRightText(buf, L_savings.x, L_savings.y, L_savings.size, C_RED);
   } else if (stationCount > 0) {
-    uiRightText("USUAL", LCD_W - 6, 126, 1, C_GREY);
+    uiRightText("USUAL", L_savings.x, L_savings.y, L_savings.size, C_GREY);
   } else if (v->days_to_wait > 0) {
     gp_fmt_cents(v->save, tmp, sizeof tmp);
     snprintf(buf, sizeof buf, "%dd %s", (int)v->days_to_wait, tmp);
-    uiRightText(buf, LCD_W - 6, 126, 1, C_GREY);
+    uiRightText(buf, L_savings.x, L_savings.y, L_savings.size, C_GREY);
   } else if (v->tomorrow_jump != 0) {
     gp_fmt_cents(v->tomorrow_jump < 0 ? -v->tomorrow_jump : v->tomorrow_jump,
                  tmp, sizeof tmp);
     snprintf(buf, sizeof buf, "%c%s", v->tomorrow_jump > 0 ? '^' : 'v', tmp);
-    uiRightText(buf, LCD_W - 6, 126, 1, C_GREY);
+    uiRightText(buf, L_savings.x, L_savings.y, L_savings.size, C_GREY);
   }
 
   // --- sparkline ---
-  uiSparkline(hist, histLen, 6, 138, LCD_W - 12, 30, C_GREY, vc);
+  uiSparkline(hist, histLen, L_sparkline.x, L_sparkline.y, L_sparkline.w,
+              L_sparkline.h, L_sparkline.dot_r, C_GREY, vc);
 }
 
 #endif  // GP_UI_H

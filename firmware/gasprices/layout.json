@@ -1,0 +1,126 @@
+{
+  "_comment": [
+    "Source of truth for where things sit on the 320x172 panel.",
+    "",
+    "preview/tools/gen_layout.py turns this into layout.h, which ui.h reads.",
+    "The browser preview reads this file directly, and its drag editor writes it",
+    "back, so nudging an element in the browser and regenerating is the whole",
+    "edit loop. Never hand-edit layout.h: `gen_layout.py --check` fails if you do.",
+    "",
+    "GEOMETRY AND SIZE ONLY. Conditional visibility, computed values",
+    "(right-alignment, bar fill fraction, sparkline scaling) and dynamic colours",
+    "stay in ui.h, on purpose \u2014 expressing those here is what would turn a layout",
+    "tweaker into a freeform UI builder.",
+    "",
+    "'anchor' is metadata for the editor, not emitted into C:",
+    "  left    x is the left edge (the default)",
+    "  right   x is the RIGHT edge; ui.h passes it to uiRightText()",
+    "  center  x is unused; ui.h centres the text in the panel",
+    "Fields absent from an element are ones it has no use for."
+  ],
+  "panel": {
+    "w": 320,
+    "h": 172
+  },
+  "elements": {
+    "header": {
+      "note": "station label, rank, and the cheapest / vs-best tag",
+      "anchor": "left",
+      "x": 6,
+      "y": 2,
+      "size": 1
+    },
+    "age": {
+      "note": "hours since the feed updated, or OFF",
+      "anchor": "right",
+      "x": 314,
+      "y": 2,
+      "size": 1
+    },
+    "divider": {
+      "note": "rule under the header",
+      "anchor": "left",
+      "x": 0,
+      "y": 14,
+      "w": 320
+    },
+    "price": {
+      "note": "today's price at the station on screen",
+      "anchor": "left",
+      "x": 6,
+      "y": 22,
+      "size": 4
+    },
+    "level_text": {
+      "note": "LVL nn%",
+      "anchor": "right",
+      "x": 314,
+      "y": 24,
+      "size": 2
+    },
+    "level_bar": {
+      "note": "outline plus a proportional fill",
+      "anchor": "left",
+      "x": 170,
+      "y": 46,
+      "w": 144,
+      "h": 12
+    },
+    "verdict_bar": {
+      "note": "full-width band in the verdict colour",
+      "anchor": "left",
+      "x": 0,
+      "y": 62,
+      "w": 320,
+      "h": 38
+    },
+    "verdict_text": {
+      "note": "centred in the bar",
+      "anchor": "center",
+      "y": 69,
+      "size": 3
+    },
+    "reason": {
+      "note": "one line of plain English, 21 chars max at size 2",
+      "anchor": "left",
+      "x": 6,
+      "y": 106,
+      "size": 2
+    },
+    "tank": {
+      "note": "TANK FULL / HALF / LOW",
+      "anchor": "left",
+      "x": 6,
+      "y": 126,
+      "size": 1
+    },
+    "savings": {
+      "note": "SAVE n.nc, USUAL, +n.nc, or the wait countdown",
+      "anchor": "right",
+      "x": 314,
+      "y": 126,
+      "size": 1
+    },
+    "sparkline": {
+      "note": "rolling window, with a fat dot on today",
+      "anchor": "left",
+      "x": 6,
+      "y": 138,
+      "w": 308,
+      "h": 30,
+      "dot_r": 2
+    },
+    "message_title": {
+      "note": "boot and hard-failure screen, centred",
+      "anchor": "center",
+      "y": 58,
+      "size": 3
+    },
+    "message_detail": {
+      "note": "second line of the same screen, centred",
+      "anchor": "center",
+      "y": 96,
+      "size": 2
+    }
+  }
+}
