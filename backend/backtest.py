@@ -28,8 +28,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import model  # noqa: E402
 from verdict import Config, Input, Tank, Verdict, evaluate  # noqa: E402
 
-ROOT = pathlib.Path(__file__).resolve().parents[1]
-HISTORY = ROOT / "backend" / "history.csv"
+from paths import HISTORY  # noqa: E402
 
 CAPACITY_L = 50.0
 DAILY_L = 7.0        # ~2,500 km/month in a small car

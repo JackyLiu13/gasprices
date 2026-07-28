@@ -27,9 +27,9 @@ import stations  # noqa: E402
 from schema import HISTORY_FIELDS as FIELDS  # noqa: E402
 from verdict import Input, Tank, evaluate  # noqa: E402
 
-ROOT = pathlib.Path(__file__).resolve().parents[1]
-HISTORY = ROOT / "backend" / "history.csv"
-OUT = ROOT / "docs" / "data.json"
+from paths import DATA_DIR as ROOT  # noqa: E402  (kept for relative_to() logging)
+from paths import DATA_JSON as OUT  # noqa: E402
+from paths import HISTORY  # noqa: E402
 
 WINDOW_DAYS = 30      # rolling window for window_lo / window_hi
 SPARK_DAYS = 28       # how much history the OLED sparkline gets

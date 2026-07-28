@@ -32,8 +32,8 @@ import model  # noqa: E402
 import sources  # noqa: E402
 from schema import HISTORY_FIELDS as FIELDS  # noqa: E402
 
-ROOT = pathlib.Path(__file__).resolve().parents[1]
-HISTORY = ROOT / "backend" / "history.csv"
+from paths import DATA_DIR as ROOT  # noqa: E402
+from paths import HISTORY  # noqa: E402
 
 
 def wholesale_by_date(rbob: list[tuple[str, float]],

@@ -28,9 +28,8 @@ import pathlib
 import statistics
 from dataclasses import dataclass, field
 
-ROOT = pathlib.Path(__file__).resolve().parent
-STATIONS = ROOT / "stations.csv"
-PRICES = ROOT / "station_prices.csv"
+from paths import STATIONS  # noqa: E402
+from paths import STATION_PRICES as PRICES  # noqa: E402
 
 # Offsets drift slowly (a station repositions, a new competitor opens), so this
 # is much longer than the 90-day margin window. Still bounded, so a station

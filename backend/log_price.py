@@ -27,9 +27,8 @@ import stations as stationlib  # noqa: E402
 from schema import HISTORY_FIELDS as FIELDS  # noqa: E402
 from schema import STATION_PRICE_FIELDS  # noqa: E402
 
-ROOT = pathlib.Path(__file__).resolve().parents[1]
-HISTORY = ROOT / "backend" / "history.csv"
-PRICES = ROOT / "backend" / "station_prices.csv"
+from paths import HISTORY  # noqa: E402
+from paths import STATION_PRICES as PRICES  # noqa: E402
 
 
 def warn_overwrite(existing: str | None, price: float, what: str) -> None:

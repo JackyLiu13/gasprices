@@ -15,8 +15,7 @@ import pathlib
 
 from schema import FORECAST_FIELDS, FORECAST_KEY
 
-ROOT = pathlib.Path(__file__).resolve().parents[1]
-FORECASTS = ROOT / "backend" / "forecasts.csv"
+from paths import FORECASTS
 
 
 def load(path: pathlib.Path = FORECASTS) -> list[dict]:

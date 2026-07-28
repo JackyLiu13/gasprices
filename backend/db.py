@@ -31,9 +31,8 @@ import model  # noqa: E402
 from schema import (FORECAST_FIELDS, HISTORY_FIELDS,  # noqa: E402
                     STATION_PRICE_FIELDS)
 
-ROOT = pathlib.Path(__file__).resolve().parents[1]
-BACKEND = ROOT / "backend"
-DB = BACKEND / "analytics.db"
+from paths import BACKEND, DB  # noqa: E402
+from paths import DATA_DIR as ROOT  # noqa: E402
 
 SOURCES = {
     "history": (BACKEND / "history.csv", HISTORY_FIELDS),
