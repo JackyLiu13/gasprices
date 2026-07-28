@@ -93,6 +93,22 @@ tests/
   stubs/            fake Adafruit headers so ui.h compiles on the host
 ```
 
+## Versioning
+
+**Every update bumps the version and gets a line in
+[`CHANGELOG.md`](CHANGELOG.md).** Versions are plain integers, starting at v0
+(the 2026-07-28 baseline). Not semver — one device, one feed, one person, so the
+only question a version needs to answer is "did the number go up".
+
+Bump when you finish a unit of work the user would recognise as a change: a
+model rule, a firmware behaviour, a new data source, a schema change. Not for a
+typo fix or a comment. When in doubt, bump — a version costs a line.
+
+Write what changed and *why it mattered*, in the register the rest of these
+docs use: a measured number beats an adjective. If a change moved the model,
+say which axis (station or timing) and give the before/after with `n`, as
+[`AGENT_NOTES.md`](AGENT_NOTES.md) requires.
+
 ## Conventions that matter
 
 **Prices are integers in tenths of a cent per litre.** `$1.489/L` is `1489`.
