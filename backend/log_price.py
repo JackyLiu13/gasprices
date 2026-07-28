@@ -23,6 +23,7 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
+import schema  # noqa: E402
 import stations as stationlib  # noqa: E402
 from schema import HISTORY_FIELDS as FIELDS  # noqa: E402
 from schema import STATION_PRICE_FIELDS  # noqa: E402
@@ -74,7 +75,7 @@ def log_regional(price: float, day: str) -> None:
         rows.sort(key=lambda r: r["date"])
 
     with HISTORY.open("w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=FIELDS)
+        w = schema.writer(f, FIELDS)
         w.writeheader()
         for r in rows:
             w.writerow({k: r.get(k, "") for k in FIELDS})
@@ -101,7 +102,7 @@ def log_station(price: float, day: str, sid: str, label: str,
     rows.sort(key=lambda r: (r["date"], r["station_id"]))
 
     with PRICES.open("w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=STATION_PRICE_FIELDS)
+        w = schema.writer(f, STATION_PRICE_FIELDS)
         w.writeheader()
         w.writerows(rows)
 

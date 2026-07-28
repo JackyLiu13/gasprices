@@ -22,6 +22,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 import forecast_log  # noqa: E402
 import model  # noqa: E402
+import schema  # noqa: E402
 import sources  # noqa: E402
 import stations  # noqa: E402
 from schema import HISTORY_FIELDS as FIELDS  # noqa: E402
@@ -47,7 +48,7 @@ def load_history() -> list[dict]:
 def save_history(rows: list[dict]) -> None:
     HISTORY.parent.mkdir(parents=True, exist_ok=True)
     with HISTORY.open("w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=FIELDS)
+        w = schema.writer(f, FIELDS)
         w.writeheader()
         for r in rows:
             w.writerow({k: r.get(k, "") for k in FIELDS})

@@ -29,6 +29,7 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 import model  # noqa: E402
+import schema  # noqa: E402
 import sources  # noqa: E402
 from schema import HISTORY_FIELDS as FIELDS  # noqa: E402
 
@@ -145,7 +146,7 @@ def main() -> int:
         return 0
 
     with HISTORY.open("w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=FIELDS)
+        w = schema.writer(f, FIELDS)
         w.writeheader()
         for r in final:
             w.writerow({k: r.get(k, "") for k in FIELDS})

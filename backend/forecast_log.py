@@ -13,6 +13,7 @@ from __future__ import annotations
 import csv
 import pathlib
 
+import schema
 from schema import FORECAST_FIELDS, FORECAST_KEY
 
 from paths import FORECASTS
@@ -29,7 +30,7 @@ def save(rows: list[dict], path: pathlib.Path = FORECASTS) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     rows = sorted(rows, key=lambda r: tuple(str(r.get(k, "")) for k in FORECAST_KEY))
     with path.open("w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=FORECAST_FIELDS)
+        w = schema.writer(f, FORECAST_FIELDS)
         w.writeheader()
         for r in rows:
             w.writerow({k: r.get(k, "") for k in FORECAST_FIELDS})

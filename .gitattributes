@@ -1,0 +1,9 @@
+# The CSVs are written by two machines — your laptop and the Lambda — and any
+# disagreement about line endings makes git see every line as changed. That
+# turned three new rows into a four-file conflict on PR #1. schema.writer()
+# pins the writers to \n; this pins what git stores, so a CRLF file arriving
+# from anywhere else is normalised rather than committed as a whole-file diff.
+*.csv text eol=lf
+
+# Golden frames for the pixel diff are binary; never touch their bytes.
+*.ppm binary

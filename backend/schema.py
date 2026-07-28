@@ -10,6 +10,8 @@ Nothing here does I/O. It is the shape of the data, not the data.
 
 from __future__ import annotations
 
+import csv
+
 # backend/history.csv — the regional benchmark series.
 #
 # retail_actual  a price you logged, most trustworthy
@@ -43,3 +45,19 @@ FORECAST_FIELDS = ["made_on", "target_date", "horizon", "variant",
 # Upsert keys — what makes a row the "same" row when it is written again.
 FORECAST_KEY = ("made_on", "target_date", "variant")
 STATION_PRICE_KEY = ("date", "station_id")
+
+# csv.DictWriter's default lineterminator is \r\n. These files are written by
+# two machines — your laptop, and the Lambda, which normalises to \n when it
+# reads a file back to commit it — so a file's line endings depended on who
+# wrote it last. Git then sees every line as changed, and PR #1 hit a conflict
+# in all 15 unchanged rows of station_prices.csv for that reason alone.
+#
+# Pinned to \n once, here, rather than at each writer, so a sixth call site
+# can't quietly reintroduce the split.
+CSV_LINETERMINATOR = "\n"
+
+
+def writer(f, fields: list[str]) -> csv.DictWriter:
+    """A DictWriter with this project's dialect. Constructs, does not write."""
+    return csv.DictWriter(f, fieldnames=fields,
+                          lineterminator=CSV_LINETERMINATOR)

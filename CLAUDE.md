@@ -190,9 +190,19 @@ Working end-to-end and flashed. The device shows the cheapest station, its
 savings vs your usual one, a `CHEAPEST` tag, and cycles all 15 stations on a
 short button press (800 ms → tank state, 2.5 s → force refresh).
 
-Not done: station offsets currently rest on a **single seeded observation each**
-(`confident: false`, the `?` on screen). Two stations — `esso-16th-ave-3010` and
-`esso-elgin-mills-1485` — have no offset at all and need one logged price.
+Not done: all 17 stations now have exactly **one** observation each, so every
+offset is still `confident: false` — the `?` on screen. `CONFIDENT_OBSERVATIONS`
+is 3. Logging a second price at any station is the highest-value change
+available; see [`AGENT_NOTES.md`](AGENT_NOTES.md) on why *where* beats *when*.
+
+The regional series is the thinner problem. `history.csv` is 65 rows over 422
+days and **56 of them are Mondays**, because Ontario's survey is weekly — so
+day-of-week effects, price cycles and the true daily passthrough rate are not
+weakly supported, they are unmeasurable. `backtest.py --sweep` holds price flat
+on 357 of 422 days and its output oscillates ~1 ¢/L between adjacent horizons;
+that is noise, so **don't adopt the thresholds it prints** until the series is
+daily. The fix is logging the regional benchmark daily
+(`python3 backend/log_price.py <price>`), not a better model.
 
 The browser preview and layout editor from [`PREVIEW_PLAN.md`](PREVIEW_PLAN.md)
 is **built**, all five phases, under `preview/` (the plan says `web/`; the
