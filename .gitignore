@@ -5,6 +5,9 @@ firmware/gasprices/config.h
 tests/test_verdict
 tests/test_ui
 
+# golden images for the preview's pixel diff — regenerated, never reviewed
+tests/out/
+
 __pycache__/
 *.pyc
 .DS_Store
