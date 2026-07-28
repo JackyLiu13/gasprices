@@ -49,21 +49,34 @@ including closing the account and changing billing. It cannot be restricted.
 Then stop using root. You'll sign in as root perhaps twice a year, for billing
 changes. Everything else uses the identity you make next.
 
-### 1.2 Make a working identity — IAM Identity Center
+### 1.2 Make a working identity
 
-In the console, search **IAM Identity Center** → Enable → create a user for
-yourself → create a permission set (`AdministratorAccess` is fine for a personal
-account) → assign yourself to the account.
+Two routes. Both end with an admin identity that isn't root.
 
-**Why this rather than an IAM user with access keys?** An IAM user's access keys
-are long-lived secrets that sit in `~/.aws/credentials` forever. They are the
-single most common way hobby AWS accounts get compromised — committed to a repo,
-picked up by a scanner, mining bills within minutes. Identity Center issues
-**temporary credentials** that expire, so a leaked file is worth little and
-worthless tomorrow.
+**IAM user (what this account uses).** IAM → Users → Create user → name it →
+attach **AdministratorAccess** directly → create. Then add an MFA device to that
+user too, and generate access keys under **Security credentials → Access keys →
+Command Line Interface (CLI)**.
 
-It's ~5 minutes more setup than an IAM user, and it's the thing worth learning
-properly.
+```bash
+aws configure --profile gasprices     # key id, secret, ca-central-1, json
+export AWS_PROFILE=gasprices
+aws sts get-caller-identity           # Arn must end in :user/<name>, not :root
+```
+
+**IAM Identity Center** is the alternative, and issues *temporary* credentials
+instead. More setup (it enables AWS Organizations), and the console layout moves
+around, but nothing long-lived lands on disk.
+
+The trade is just that: an IAM user's access key is a permanent secret in
+`~/.aws/credentials`. Leaked keys are the most common way hobby accounts get
+compromised — committed to a repo, scanned, mining bills within minutes. If you
+take this route, never let that file near a repo, and rotate the key if you have
+any doubt. Identity Center's credentials expire on their own, which is why AWS
+recommends it.
+
+Either way: **enable MFA on the admin identity as well as root**, and stop using
+root for daily work.
 
 ---
 
