@@ -16,18 +16,18 @@
 
 typedef struct { int16_t x, y, w, h, size, dot_r; } GpElem;
 
-static const GpElem L_header         = {   6,   2,   0,   0,   1,   0 };  // station label, rank, and the cheapest / vs-best tag
-static const GpElem L_age            = { 314,   2,   0,   0,   1,   0 };  // hours since the feed updated, or OFF
+static const GpElem L_header         = {  11,   2,   0,   0,   1,   0 };  // station label, rank, and the cheapest / vs-best tag
+static const GpElem L_age            = { 309,   2,   0,   0,   1,   0 };  // hours since the feed updated, or OFF
 static const GpElem L_divider        = {   0,  14, 320,   0,   0,   0 };  // rule under the header
-static const GpElem L_price          = {   6,  22,   0,   0,   4,   0 };  // today's price at the station on screen
-static const GpElem L_level_text     = { 314,  24,   0,   0,   2,   0 };  // LVL nn%
-static const GpElem L_level_bar      = { 170,  46, 144,  12,   0,   0 };  // outline plus a proportional fill
+static const GpElem L_price          = {  11,  22,   0,   0,   4,   0 };  // today's price at the station on screen
+static const GpElem L_level_text     = { 309,  24,   0,   0,   2,   0 };  // LVL nn%
+static const GpElem L_level_bar      = { 170,  46, 139,  12,   0,   0 };  // outline plus a proportional fill
 static const GpElem L_verdict_bar    = {   0,  62, 320,  38,   0,   0 };  // full-width band in the verdict colour
 static const GpElem L_verdict_text   = {   0,  69,   0,   0,   3,   0 };  // centred in the bar
-static const GpElem L_reason         = {   6, 106,   0,   0,   2,   0 };  // one line of plain English, 21 chars max at size 2
-static const GpElem L_tank           = {   6, 126,   0,   0,   1,   0 };  // TANK FULL / HALF / LOW
-static const GpElem L_savings        = { 314, 126,   0,   0,   1,   0 };  // SAVE n.nc, USUAL, +n.nc, or the wait countdown
-static const GpElem L_sparkline      = {   6, 138, 308,  30,   0,   2 };  // rolling window, with a fat dot on today
+static const GpElem L_reason         = {  11, 106,   0,   0,   2,   0 };  // one line of plain English, 21 chars max at size 2
+static const GpElem L_tank           = {  11, 126,   0,   0,   1,   0 };  // TANK FULL / HALF / LOW
+static const GpElem L_savings        = { 309, 126,   0,   0,   1,   0 };  // SAVE n.nc, USUAL, +n.nc, or the wait countdown
+static const GpElem L_sparkline      = {  11, 138, 298,  30,   0,   2 };  // rolling window, with a fat dot on today
 static const GpElem L_message_title  = {   0,  58,   0,   0,   3,   0 };  // boot and hard-failure screen, centred
 static const GpElem L_message_detail = {   0,  96,   0,   0,   2,   0 };  // second line of the same screen, centred
 

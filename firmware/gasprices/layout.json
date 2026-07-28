@@ -16,7 +16,16 @@
     "  left    x is the left edge (the default)",
     "  right   x is the RIGHT edge; ui.h passes it to uiRightText()",
     "  center  x is unused; ui.h centres the text in the panel",
-    "Fields absent from an element are ones it has no use for."
+    "Fields absent from an element are ones it has no use for.",
+    "",
+    "SIDE MARGIN: 11px, not 6. The panel's corners are rounded, so the outermost",
+    "columns are shaved at the top and bottom of the glass even though the",
+    "framebuffer is a full rectangle. Text at x=6 reads as clipped on real",
+    "hardware. Nothing in the preview or the clipping test can see this \u2014 both",
+    "model the framebuffer, which is square \u2014 so it is written down here instead:",
+    "keep content between x=11 and x=308 inclusive. The divider and verdict bar",
+    "are the exceptions and still run full width, because a filled band whose ends",
+    "follow the curve reads as deliberate, while one stopping 11px short does not."
   ],
   "panel": {
     "w": 320,
@@ -26,14 +35,14 @@
     "header": {
       "note": "station label, rank, and the cheapest / vs-best tag",
       "anchor": "left",
-      "x": 6,
+      "x": 11,
       "y": 2,
       "size": 1
     },
     "age": {
       "note": "hours since the feed updated, or OFF",
       "anchor": "right",
-      "x": 314,
+      "x": 309,
       "y": 2,
       "size": 1
     },
@@ -47,14 +56,14 @@
     "price": {
       "note": "today's price at the station on screen",
       "anchor": "left",
-      "x": 6,
+      "x": 11,
       "y": 22,
       "size": 4
     },
     "level_text": {
       "note": "LVL nn%",
       "anchor": "right",
-      "x": 314,
+      "x": 309,
       "y": 24,
       "size": 2
     },
@@ -63,7 +72,7 @@
       "anchor": "left",
       "x": 170,
       "y": 46,
-      "w": 144,
+      "w": 139,
       "h": 12
     },
     "verdict_bar": {
@@ -83,30 +92,30 @@
     "reason": {
       "note": "one line of plain English, 21 chars max at size 2",
       "anchor": "left",
-      "x": 6,
+      "x": 11,
       "y": 106,
       "size": 2
     },
     "tank": {
       "note": "TANK FULL / HALF / LOW",
       "anchor": "left",
-      "x": 6,
+      "x": 11,
       "y": 126,
       "size": 1
     },
     "savings": {
       "note": "SAVE n.nc, USUAL, +n.nc, or the wait countdown",
       "anchor": "right",
-      "x": 314,
+      "x": 309,
       "y": 126,
       "size": 1
     },
     "sparkline": {
       "note": "rolling window, with a fat dot on today",
       "anchor": "left",
-      "x": 6,
+      "x": 11,
       "y": 138,
-      "w": 308,
+      "w": 298,
       "h": 30,
       "dot_r": 2
     },
