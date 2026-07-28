@@ -439,7 +439,9 @@ export function render(state, layout, opts = {}) {
     // showing nothing, so cycling never looks like it stopped working.
     rightText(fb, `+${fmtCents(-bestSave)}`, sv.x, sv.y, sv.size, C.RED);
   } else if (stationCount > 0) {
-    rightText(fb, 'USUAL', sv.x, sv.y, sv.size, C.GREY);
+    // Zero saving means you are looking at the station savings are measured
+    // against — your home station (backend/stations.csv, role `home`).
+    rightText(fb, 'HOME', sv.x, sv.y, sv.size, C.GREY);
   } else if (v.days_to_wait > 0) {
     rightText(fb, `${v.days_to_wait}d ${fmtCents(v.save)}`,
               sv.x, sv.y, sv.size, C.GREY);

@@ -140,6 +140,16 @@ def cheapest(stations: dict[str, Station],
     return min(pool, key=lambda s: s.predicted) if pool else None
 
 
+def baseline(stations: dict[str, Station]) -> Station | None:
+    """The station savings are measured against.
+
+    Your `home` station if one is marked — savings then mean "versus filling up
+    where I normally would", which is the number worth acting on. Falls back to
+    the cheapest `regular` so a registry with no home set still works.
+    """
+    return cheapest(stations, roles=("home",)) or cheapest(stations, roles=("regular",))
+
+
 def summary(stations: dict[str, Station]) -> list[dict]:
     """Compact per-station rows for data.json, cheapest first."""
     rows = []

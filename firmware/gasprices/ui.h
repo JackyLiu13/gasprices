@@ -268,7 +268,9 @@ static void uiRender(const GpInput *in, const GpVerdict *v,
     snprintf(buf, sizeof buf, "+%s", tmp);
     uiRightText(buf, L_savings.x, L_savings.y, L_savings.size, C_RED);
   } else if (stationCount > 0) {
-    uiRightText("USUAL", L_savings.x, L_savings.y, L_savings.size, C_GREY);
+    // Zero saving means you are looking at the station savings are measured
+    // against — your home station (backend/stations.csv, role `home`).
+    uiRightText("HOME", L_savings.x, L_savings.y, L_savings.size, C_GREY);
   } else if (v->days_to_wait > 0) {
     gp_fmt_cents(v->save, tmp, sizeof tmp);
     snprintf(buf, sizeof buf, "%dd %s", (int)v->days_to_wait, tmp);
