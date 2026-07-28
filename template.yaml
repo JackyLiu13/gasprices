@@ -12,16 +12,20 @@ Parameters:
   GitHubBranch:
     Type: String
     Default: main
-  # SSM lookups, so no secret is ever written into this template, into
-  # samconfig.toml, or into CloudFormation's stored parameters.
-  GitHubToken:
-    Type: AWS::SSM::Parameter::Value<String>
+  # Only the parameter NAMES. The values are read at runtime.
+  #
+  # The obvious approach — Type: AWS::SSM::Parameter::Value<String> — cannot
+  # work here: CloudFormation resolves those at deploy time and **does not
+  # support SecureString**, which is exactly what a secret should be stored as.
+  # Fetching at runtime is also better: rotating a secret is one put-parameter
+  # call, with no redeploy, and the value never enters the template, the
+  # changeset, or samconfig.toml.
+  GitHubTokenParam:
+    Type: String
     Default: /gasprices/github_token
-    NoEcho: true
-  IngestSecret:
-    Type: AWS::SSM::Parameter::Value<String>
+  IngestSecretParam:
+    Type: String
     Default: /gasprices/ingest_secret
-    NoEcho: true
 
 Globals:
   Function:
@@ -42,7 +46,8 @@ Globals:
         GP_DB_PATH: /tmp/gp/analytics.db
         GP_REPO: !Ref GitHubRepo
         GP_BRANCH: !Ref GitHubBranch
-        GP_GITHUB_TOKEN: !Ref GitHubToken
+        GP_GITHUB_TOKEN_PARAM: !Ref GitHubTokenParam
+        GP_INGEST_SECRET_PARAM: !Ref IngestSecretParam
     # Deliberately NO VpcConfig. This function needs the public internet, and a
     # VPC Lambda reaches it only via a NAT Gateway at ~$32/month — thirty times
     # the rest of this stack, for no benefit.
@@ -53,6 +58,21 @@ Resources:
     Properties:
       FunctionName: gasprices-build
       Handler: lambda_handlers.build_handler
+      # Policies must sit on each function; SAM rejects them in Globals.
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [ssm:GetParameter]
+              Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/gasprices/*
+            # A SecureString also needs the key. ViaService scopes this so the
+            # grant only works for calls arriving through SSM, not arbitrary
+            # decryption with the account's key.
+            - Effect: Allow
+              Action: [kms:Decrypt]
+              Resource: "*"
+              Condition:
+                StringEquals:
+                  kms:ViaService: !Sub ssm.${AWS::Region}.amazonaws.com
       Events:
         Schedule:
           Type: ScheduleV2          # EventBridge Scheduler
@@ -68,9 +88,21 @@ Resources:
     Properties:
       FunctionName: gasprices-log
       Handler: lambda_handlers.log_handler
-      Environment:
-        Variables:
-          GP_INGEST_SECRET: !Ref IngestSecret
+      # Policies must sit on each function; SAM rejects them in Globals.
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [ssm:GetParameter]
+              Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/gasprices/*
+            # A SecureString also needs the key. ViaService scopes this so the
+            # grant only works for calls arriving through SSM, not arbitrary
+            # decryption with the account's key.
+            - Effect: Allow
+              Action: [kms:Decrypt]
+              Resource: "*"
+              Condition:
+                StringEquals:
+                  kms:ViaService: !Sub ssm.${AWS::Region}.amazonaws.com
       FunctionUrlConfig:
         # NONE means "no AWS SigV4", not "no auth" — the handler requires a
         # shared secret header and returns 401 without it. AWS_IAM would mean

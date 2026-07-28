@@ -1,0 +1,11 @@
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "gasprices"
+capabilities = ["CAPABILITY_IAM"]
+resolve_s3 = true
+confirm_changeset = false
+fail_on_empty_changeset = false
+
+[default.global.parameters]
+region = "ca-central-1"

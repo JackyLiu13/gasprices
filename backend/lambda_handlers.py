@@ -32,6 +32,41 @@ DATA_FILES = [
 ]
 OUTPUT_FILES = DATA_FILES + ["docs/data.json"]
 
+# Secrets are read from SSM at runtime rather than injected as function config.
+# CloudFormation cannot resolve SecureString parameters at deploy time at all,
+# and runtime lookup means rotating a secret is one put-parameter call with no
+# redeploy. Cached per container, so a warm Lambda pays for it once.
+_secret_cache: dict[str, str] = {}
+
+
+def _secret(param_env: str, direct_env: str) -> str:
+    """Resolve a secret: the SSM parameter named by `param_env`, or the literal
+    in `direct_env` (which is how the local tests supply one)."""
+    direct = os.environ.get(direct_env)
+    if direct:
+        return direct
+
+    name = os.environ.get(param_env)
+    if not name:
+        raise RuntimeError(f"neither {direct_env} nor {param_env} is set")
+    if name not in _secret_cache:
+        # boto3 ships in the Lambda runtime; imported lazily so importing this
+        # module on a laptop without boto3 still works.
+        import boto3
+        ssm = boto3.client("ssm")
+        got = ssm.get_parameter(Name=name, WithDecryption=True)
+        _secret_cache[name] = got["Parameter"]["Value"]
+    return _secret_cache[name]
+
+
+def _store():
+    repo = os.environ.get("GP_REPO")
+    if not repo:
+        raise RuntimeError("GP_REPO must be set")
+    token = _secret("GP_GITHUB_TOKEN_PARAM", "GP_GITHUB_TOKEN")
+    return github_store.GitHubStore(repo, token,
+                                    os.environ.get("GP_BRANCH", "main"))
+
 
 def _pull(store) -> None:
     paths.ensure_dirs()
@@ -75,7 +110,7 @@ def _summary() -> str:
 # Scheduled build — EventBridge
 # ---------------------------------------------------------------------------
 def build_handler(event, context):
-    store = github_store.from_env()
+    store = _store()
     _pull(store)
     _run_build()
     sha = _push(store, f"data: {_summary()}")
@@ -94,7 +129,7 @@ def _reply(code: int, body: dict) -> dict:
 def log_handler(event, context):
     # Function URLs lowercase header names, but be tolerant anyway.
     headers = {k.lower(): v for k, v in (event.get("headers") or {}).items()}
-    expected = os.environ.get("GP_INGEST_SECRET", "")
+    expected = _secret("GP_INGEST_SECRET_PARAM", "GP_INGEST_SECRET")
     if not expected or headers.get("x-gp-secret") != expected:
         return _reply(401, {"ok": False, "error": "bad or missing x-gp-secret"})
 
@@ -116,7 +151,7 @@ def log_handler(event, context):
     except (TypeError, ValueError):
         return _reply(400, {"ok": False, "error": "price must be a number"})
 
-    store = github_store.from_env()
+    store = _store()
     _pull(store)
 
     import log_price

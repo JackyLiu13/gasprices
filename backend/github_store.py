@@ -55,8 +55,22 @@ class GitHubStore:
             "User-Agent": UA,
             "Content-Type": "application/json",
         })
-        with urllib.request.urlopen(req, timeout=30) as r:
-            raw = r.read()
+        try:
+            with urllib.request.urlopen(req, timeout=30) as r:
+                raw = r.read()
+        except urllib.error.HTTPError as e:
+            # GitHub explains itself in the body; without this a 403 arrives as
+            # a bare "Forbidden" and you cannot tell a missing token scope from
+            # branch protection from a bad path. Callers that handle specific
+            # codes still re-raise, so the code stays inspectable.
+            detail = ""
+            try:
+                detail = json.loads(e.read()).get("message", "")
+            except Exception:
+                pass
+            e.gp_detail = detail
+            e.gp_where = f"{method} {path}"
+            raise
         return json.loads(raw) if raw else {}
 
     # --- reading -----------------------------------------------------------
@@ -87,7 +101,7 @@ class GitHubStore:
     # --- writing -----------------------------------------------------------
 
     def commit(self, files: dict[str, str], message: str,
-               retries: int = 3) -> str | None:
+               retries: int = 3) -> str | None:  # noqa: C901
         """Commit several files atomically. Returns the sha, or None if the
         content already matches what's on the branch."""
         if not files:
@@ -127,7 +141,9 @@ class GitHubStore:
                     last = e
                     time.sleep(1 + attempt)
                     continue
-                raise GitHubError(f"update ref: {e.code} {e.reason}") from e
+                raise GitHubError(
+                    f"update ref: {e.code} {e.reason}"
+                    f" — {getattr(e, 'gp_detail', '')}") from e
 
         raise GitHubError(f"gave up after {retries} attempts: {last}")
 
