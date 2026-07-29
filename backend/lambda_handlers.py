@@ -192,10 +192,21 @@ def log_handler(event, context):
         import log_price
         found = log_price.stationlib.nearest(lat, lon,
                                              log_price.stationlib.load_stations())
-        return _reply(200, {"ok": True, "logged": False, "nearest": [
-            {"id": s.id, "label": s.label, "brand": s.brand,
-             "address": s.address, "meters": round(d)}
-            for s, d in found]})
+        return _reply(200, {
+            "ok": True, "logged": False,
+            "nearest": [
+                {"id": s.id, "label": s.label, "brand": s.brand,
+                 "address": s.address, "meters": round(d)}
+                for s, d in found],
+            # The same labels, flat, nearest first. Redundant on purpose: a
+            # phone Shortcut can feed a flat array straight into a picker,
+            # whereas pulling one key out of an array of objects costs it a
+            # loop — three actions of visual scripting, dragged into a Repeat
+            # block by hand, to do what this line does once. Building the list
+            # here also means `station` goes back exactly as it came, so
+            # log_price.resolve() matches it as a label with nothing to strip.
+            "labels": [s.label for s, _ in found],
+        })
 
     # An absent station is NOT harmless: log_price treats "no station" as "this
     # is the regional benchmark" and would overwrite the series the whole model
