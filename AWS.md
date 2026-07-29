@@ -238,6 +238,10 @@ curl -X POST "$LOG_URL" \
 
 # Wrong secret must be refused
 curl -X POST "$LOG_URL" -H "x-gp-secret: wrong" -d '{"station":"beaver","price":1.709}'
+
+# Lookup mode: what am I standing at? Writes nothing, returns nearest first.
+curl -X POST "$LOG_URL" -H "x-gp-secret: $SECRET" \
+  -d '{"lat":43.87578,"lon":-79.41570}'
 ```
 
 Expect a commit in the repo, `station_prices.csv` updated, `data.json`

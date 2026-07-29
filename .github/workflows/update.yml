@@ -84,22 +84,62 @@ jobs:
             -- "$PRICE"
 
       - name: Build data.json
+        id: build
+        # A dispatched price is already on disk by now, and it is the one thing
+        # in this run that cannot be fetched again later — you were standing at
+        # the pump. build.py deliberately exits non-zero rather than publish a
+        # wrong number, so on a dispatch an upstream outage at Yahoo would
+        # otherwise throw that price away along with the runner. Keep going and
+        # commit it; the next scheduled run rebuilds. The job still ends red,
+        # via "Surface a failed rebuild" below.
+        #
+        # Only on a dispatch. A failed scheduled build should stop here exactly
+        # as it always has: there is nothing to salvage.
+        continue-on-error: ${{ github.event_name == 'repository_dispatch' }}
         env:
           LOCAL_PRICE_OVERRIDE: ${{ github.event.inputs.local_price }}
         run: python3 backend/build.py
 
       - name: Commit if anything changed
+        env:
+          BUILD: ${{ steps.build.outcome }}
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           # station_prices.csv matters: without it a dispatched price would be
           # logged, folded into the published offsets, and then discarded with
           # the runner — so the very next run would forget it.
-          git add docs/data.json backend/history.csv backend/station_prices.csv
+          git add docs/data.json docs/stations.json \
+                  backend/history.csv backend/station_prices.csv
           if git diff --staged --quiet; then
             echo "no change"
-          else
-            SUMMARY=$(python3 -c "import json; d = json.load(open('docs/data.json')); print('%.3f/L %s' % (d['today_cad'] / 1000, d['verdict_hint']))")
-            git commit -m "data: $(date -u +%F) $SUMMARY"
-            git push
+            exit 0
           fi
+
+          if [ "$BUILD" = "success" ]; then
+            SUMMARY=$(python3 -c "import json; d = json.load(open('docs/data.json')); print('%.3f/L %s' % (d['today_cad'] / 1000, d['verdict_hint']))")
+          else
+            # docs/data.json is still whatever the last good run published —
+            # build.py leaves it in place on failure — so reading a price out
+            # of it here would label this commit with a number this run never
+            # computed. Say what actually happened instead.
+            SUMMARY="price logged, rebuild failed"
+          fi
+          git commit -m "data: $(date -u +%F) $SUMMARY"
+
+          # The concurrency group keeps two runs of this workflow apart, but not
+          # a laptop pushing while one is in flight — the hazard CLAUDE.md flags.
+          # Rebase onto whatever landed rather than clobbering it.
+          for _ in 1 2 3; do
+            git push && exit 0
+            git pull --rebase --autostash origin main || break
+          done
+          echo "::error::could not push after 3 attempts" >&2
+          exit 1
+
+      - name: Surface a failed rebuild
+        if: steps.build.outcome == 'failure'
+        run: |
+          echo "::error::price was logged and committed, but build.py failed —" \
+               "docs/data.json is unchanged and the next run will rebuild it" >&2
+          exit 1

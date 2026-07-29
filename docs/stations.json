@@ -1,0 +1,196 @@
+{
+ "generated": "2026-07-28",
+ "confident_at": 3,
+ "stations": [
+  {
+   "id": "esso-16th-ave-3010",
+   "label": "ESSO 16TH AVE",
+   "brand": "Esso",
+   "address": "3010 16th Ave",
+   "city": "Markham",
+   "role": "favourite",
+   "lat": 43.86839,
+   "lon": -79.36225
+  },
+  {
+   "id": "esso-bayview-9999",
+   "label": "ESSO BAYVIEW",
+   "brand": "Esso",
+   "address": "9999 Bayview Ave",
+   "city": "Richmond Hill",
+   "role": "regular",
+   "lat": 43.87581,
+   "lon": -79.41512
+  },
+  {
+   "id": "esso-bayview-major-mackenzie-10016",
+   "label": "ESSO BAYVW MAJMAC",
+   "brand": "Esso",
+   "address": "10016 Bayview Ave & Major Mackenzie Dr E",
+   "city": "Richmond Hill",
+   "role": "tracked",
+   "lat": null,
+   "lon": null
+  },
+  {
+   "id": "esso-beaver-creek",
+   "label": "ESSO BEAVERCRK",
+   "brand": "Esso",
+   "address": "255 E Beaver Creek Rd",
+   "city": "Richmond Hill",
+   "role": "favourite",
+   "lat": 43.84559,
+   "lon": -79.37829
+  },
+  {
+   "id": "esso-elgin-mills-1485",
+   "label": "ESSO ELGINMILLS",
+   "brand": "Esso",
+   "address": "1485 Elgin Mills Rd E",
+   "city": "Richmond Hill",
+   "role": "home",
+   "lat": 43.89822,
+   "lon": -79.39645
+  },
+  {
+   "id": "esso-elgin-mills-2801",
+   "label": "ESSO ELGIN MKM",
+   "brand": "Esso",
+   "address": "2801 Elgin Mills Rd E",
+   "city": "Markham",
+   "role": "tracked",
+   "lat": 43.90132,
+   "lon": -79.38426
+  },
+  {
+   "id": "esso-woodbine-7001",
+   "label": "ESSO WOODBINE",
+   "brand": "Esso",
+   "address": "7001 Woodbine Ave",
+   "city": "Markham",
+   "role": "tracked",
+   "lat": 43.81472,
+   "lon": -79.34831
+  },
+  {
+   "id": "esso-yonge-10579",
+   "label": "ESSO YONGE 105",
+   "brand": "Esso",
+   "address": "10579 Yonge St",
+   "city": "Richmond Hill",
+   "role": "tracked",
+   "lat": 43.88545,
+   "lon": -79.44035
+  },
+  {
+   "id": "esso-yonge-12891",
+   "label": "ESSO YONGE 128",
+   "brand": "Esso",
+   "address": "12891 Yonge St",
+   "city": "Richmond Hill",
+   "role": "tracked",
+   "lat": 43.94194,
+   "lon": -79.45388
+  },
+  {
+   "id": "major-mackenzie-2881",
+   "label": "MAJMAC 2881",
+   "brand": "",
+   "address": "2881 Major Mackenzie Dr",
+   "city": "Richmond Hill",
+   "role": "tracked",
+   "lat": 43.88278,
+   "lon": -79.38211
+  },
+  {
+   "id": "petrocan-bayview-9277",
+   "label": "PETROCAN BAYVW",
+   "brand": "Petro-Canada",
+   "address": "9277 Bayview Ave",
+   "city": "Richmond Hill",
+   "role": "tracked",
+   "lat": 43.85762,
+   "lon": -79.4108
+  },
+  {
+   "id": "petrocan-hwy7-4641",
+   "label": "PETROCAN HWY7",
+   "brand": "Petro-Canada",
+   "address": "4641 Hwy 7 E",
+   "city": "Markham",
+   "role": "tracked",
+   "lat": null,
+   "lon": null
+  },
+  {
+   "id": "petrocan-major-mac-695",
+   "label": "PETROCAN MAJMAC",
+   "brand": "Petro-Canada",
+   "address": "695 Major Mackenzie Dr E",
+   "city": "Richmond Hill",
+   "role": "tracked",
+   "lat": 43.87574,
+   "lon": -79.41629
+  },
+  {
+   "id": "pioneer-major-mac-6375",
+   "label": "PIONEER MAJMAC",
+   "brand": "Pioneer",
+   "address": "6375 Major Mackenzie Dr E",
+   "city": "Markham",
+   "role": "tracked",
+   "lat": 43.912,
+   "lon": -79.25683
+  },
+  {
+   "id": "shell-hwy7-408",
+   "label": "SHELL HWY7",
+   "brand": "Shell",
+   "address": "408 Hwy 7 E",
+   "city": "Richmond Hill",
+   "role": "tracked",
+   "lat": null,
+   "lon": null
+  },
+  {
+   "id": "shell-hwy7-5706",
+   "label": "SHELL HWY7 MKM",
+   "brand": "Shell",
+   "address": "5706 Hwy 7 E",
+   "city": "Markham",
+   "role": "tracked",
+   "lat": null,
+   "lon": null
+  },
+  {
+   "id": "shell-leslie-9240",
+   "label": "SHELL LESLIE",
+   "brand": "Shell",
+   "address": "9240 Leslie St",
+   "city": "Richmond Hill",
+   "role": "favourite",
+   "lat": 43.86215,
+   "lon": -79.38709
+  },
+  {
+   "id": "shell-yonge-11151",
+   "label": "SHELL YONGE 111",
+   "brand": "Shell",
+   "address": "11151 Yonge St",
+   "city": "Richmond Hill",
+   "role": "tracked",
+   "lat": 43.89925,
+   "lon": -79.44353
+  },
+  {
+   "id": "shell-yonge-8656",
+   "label": "SHELL YONGE 86",
+   "brand": "Shell",
+   "address": "8656 Yonge St",
+   "city": "Richmond Hill",
+   "role": "tracked",
+   "lat": 43.83851,
+   "lon": -79.42986
+  }
+ ]
+}

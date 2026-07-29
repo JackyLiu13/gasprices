@@ -44,6 +44,12 @@ FORECASTS = BACKEND / "forecasts.csv"        # what the model committed to
 # Published output — the ~4 KB the device actually fetches.
 DATA_JSON = DOCS / "data.json"
 
+# Published output the device does NOT fetch: the station registry with its
+# coordinates, for a phone that needs to find a station by where it is. Separate
+# from data.json precisely so the ESP32's payload does not carry it. See
+# build.py's write_stations_json.
+STATIONS_JSON = DOCS / "stations.json"
+
 # Derived, gitignored, rebuildable from the CSVs at any time.
 DB = pathlib.Path(os.environ.get("GP_DB_PATH", BACKEND / "analytics.db"))
 

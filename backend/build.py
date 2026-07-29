@@ -31,6 +31,7 @@ from verdict import Input, Tank, evaluate  # noqa: E402
 from paths import DATA_DIR as ROOT  # noqa: E402  (kept for relative_to() logging)
 from paths import DATA_JSON as OUT  # noqa: E402
 from paths import HISTORY  # noqa: E402
+from paths import STATIONS_JSON  # noqa: E402
 
 WINDOW_DAYS = 30      # rolling window for window_lo / window_hi
 SPARK_DAYS = 28       # how much history the OLED sparkline gets
@@ -74,6 +75,39 @@ def observed_retail(row: dict) -> float | None:
     """Real measurements only — never our own model, or calibration would be
     fitting the margin to a price the margin produced."""
     return fnum(row, "retail_actual") or fnum(row, "retail_survey")
+
+
+def write_stations_json(sts: dict) -> None:
+    """Publish the registry for clients that locate a station rather than price it.
+
+    Deliberately NOT folded into data.json. The ESP32 parses that file on every
+    fetch, twice a day, and has no use for a coordinate: measured, merging the
+    19 lat/lon pairs in takes data.json from 4387 to 5086 bytes (+16%) for a
+    field the firmware never reads. This file is fetched by a phone instead, on
+    demand, and only changes when the registry does.
+
+    Written unconditionally rather than only when the registry changed: it is
+    derived entirely from stations.csv, so rewriting it is idempotent and git
+    sees a diff only when there is one. Sorted by id so that diff stays readable.
+
+    Note this carries no prices. It is public (GitHub Pages), it needs no
+    authentication to be useful, and keeping it to "where the stations are"
+    means it never has to be reasoned about as anything but a map.
+    """
+    payload = {
+        "generated": dt.date.today().isoformat(),
+        "confident_at": stations.CONFIDENT_OBSERVATIONS,
+        "stations": [
+            {"id": s.id, "label": s.label, "brand": s.brand,
+             "address": s.address, "city": s.city, "role": s.role,
+             # null, not omitted: a client sorting by distance has to be able to
+             # tell "no coordinate on file" from a key it forgot to read.
+             "lat": s.lat, "lon": s.lon}
+            for s in sorted(sts.values(), key=lambda s: s.id)
+        ],
+    }
+    STATIONS_JSON.parent.mkdir(parents=True, exist_ok=True)
+    STATIONS_JSON.write_text(json.dumps(payload, indent=1) + "\n")
 
 
 def main() -> int:
@@ -227,6 +261,15 @@ def main() -> int:
     #    that benchmark plus its own stable offset.
     benchmark = {r["date"]: b for r in history if (b := best_retail(r))}
     sts = stations.load_stations()
+
+    # A price whose station id is not in the registry is skipped by every
+    # consumer without a word — see stations.orphans. Not fatal (the rest of the
+    # feed is fine and refusing to publish over it would be worse), but it means
+    # observations you logged are not reaching the model, which you want to hear.
+    for sid, n in stations.orphans(sts).items():
+        print(f"warning: {n} price(s) reference {sid!r}, which is not in "
+              f"stations.csv — they are being ignored", file=sys.stderr)
+
     stations.compute_offsets(sts, benchmark, today)
     stations.predict_all(sts, today_retail)
 
@@ -327,6 +370,7 @@ def main() -> int:
     forecast_log.record(forecast_rows)
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(text)
+    write_stations_json(sts)
     where = f" @ {best.label}" if best else ""
     saving = (f", save {save_vs_regular * 100:.1f}c vs {baseline.label}"
               if best and baseline and save_vs_regular > 0 else "")

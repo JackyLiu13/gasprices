@@ -13,6 +13,7 @@ to /var/task, which is read-only, so anything writing next to the code fails.
 from __future__ import annotations
 
 import base64
+import datetime as dt
 import json
 import os
 import pathlib
@@ -24,6 +25,22 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import github_store  # noqa: E402
 import paths  # noqa: E402
 
+# Lambda's clock is UTC, and an observation is dated in the timezone it was seen
+# in. Without this, anything logged after 8pm Toronto lands on tomorrow's date —
+# at the newest end of the calibration window, anchoring the model to a day that
+# has not happened. /usr/share/zoneinfo ships on the Lambda runtime; the fallback
+# is only for a stripped container, where UTC is still better than crashing.
+try:
+    from zoneinfo import ZoneInfo
+
+    LOCAL_TZ = ZoneInfo("America/Toronto")
+except Exception:                                        # noqa: BLE001
+    LOCAL_TZ = dt.timezone.utc
+
+
+def _now_local() -> dt.datetime:
+    return dt.datetime.now(LOCAL_TZ)
+
 # The files the pipeline reads and may rewrite, repo-relative.
 DATA_FILES = [
     "backend/history.csv",
@@ -31,7 +48,7 @@ DATA_FILES = [
     "backend/stations.csv",
     "backend/forecasts.csv",
 ]
-OUTPUT_FILES = DATA_FILES + ["docs/data.json"]
+OUTPUT_FILES = DATA_FILES + ["docs/data.json", "docs/stations.json"]
 
 # Secrets are read from SSM at runtime rather than injected as function config.
 # CloudFormation cannot resolve SecureString parameters at deploy time at all,
@@ -153,6 +170,33 @@ def log_handler(event, context):
     station = str(payload.get("station") or "").strip()
     source = str(payload.get("source") or "dispatch").strip()
 
+    # Lookup mode: {"lat": .., "lon": ..} with no price asks "what am I standing
+    # at?" and writes nothing. It exists so a phone can offer you the right
+    # station to confirm instead of making you find it in a list of 19, while
+    # the choice itself stays with a human — two of these stations are 94 m
+    # apart on opposite corners of one intersection, which is inside GPS error.
+    # Kept on this endpoint rather than a second one so there is one URL and one
+    # secret on the phone.
+    if payload.get("lat") is not None and payload.get("price") is None:
+        try:
+            lat, lon = float(payload["lat"]), float(payload["lon"])
+        except (TypeError, ValueError, KeyError):
+            return _reply(400, {"ok": False,
+                                "error": "lat and lon must both be numbers"})
+        # Only the registry, not all four CSVs: this path never runs the model,
+        # and /tmp starts empty on a cold container so *something* must be
+        # fetched before load_stations sees a file at all.
+        paths.ensure_dirs()
+        _store().pull(["backend/stations.csv"], paths.DATA_DIR)
+
+        import log_price
+        found = log_price.stationlib.nearest(lat, lon,
+                                             log_price.stationlib.load_stations())
+        return _reply(200, {"ok": True, "logged": False, "nearest": [
+            {"id": s.id, "label": s.label, "brand": s.brand,
+             "address": s.address, "meters": round(d)}
+            for s, d in found]})
+
     # An absent station is NOT harmless: log_price treats "no station" as "this
     # is the regional benchmark" and would overwrite the series the whole model
     # is anchored to. Same guard as the GitHub Action.
@@ -174,9 +218,20 @@ def log_handler(event, context):
     if not 0.5 <= price <= 3.5:
         return _reply(400, {"ok": False, "error": f"{price} is not a pump price"})
 
-    import datetime as dt
-    day = dt.date.today().isoformat()
-    log_price.log_station(price, day, sid, known[sid].label, source)
+    # An explicit time lets a device that buffered a reading while offline say
+    # when it actually saw it, instead of when it managed to reach the endpoint.
+    now = _now_local()
+    day = str(payload.get("date") or now.date().isoformat())
+    time = str(payload.get("time") or now.strftime("%H:%M"))
+    try:
+        if dt.date.fromisoformat(day) > now.date():
+            return _reply(400, {"ok": False, "error": f"{day} is in the future"})
+        time = dt.time.fromisoformat(time).strftime("%H:%M")
+    except ValueError:
+        return _reply(400, {"ok": False,
+                            "error": "date must be YYYY-MM-DD and time HH:MM"})
+
+    log_price.log_station(price, day, sid, known[sid].label, source, time)
 
     # Rebuild immediately so the device sees the new offset on its next fetch
     # rather than waiting for the next scheduled run.

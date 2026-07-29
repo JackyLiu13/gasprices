@@ -1,33 +1,33 @@
 {
  "schema": 2,
  "station": "Richmond Hill, ON",
- "updated": "2026-07-28T21:36:58Z",
- "epoch": 1785274618,
+ "updated": "2026-07-29T01:20:35Z",
+ "epoch": 1785288035,
  "today_cad": 1689,
  "pred": [
+  1684,
   1682,
-  1678,
-  1676,
-  1675,
-  1675
+  1680,
+  1680,
+  1679
  ],
- "window_lo": 1493,
- "window_hi": 1733,
+ "window_lo": 1488,
+ "window_hi": 1728,
  "hist": [
-  1542,
-  1559,
-  1700,
-  1727,
-  1733,
-  1707,
-  1704,
+  1537,
+  1554,
+  1695,
+  1722,
+  1728,
+  1702,
+  1699,
   1689
  ],
  "best": {
   "id": "esso-16th-ave-3010",
   "label": "ESSO 16TH AVE",
   "price": 1689,
-  "offset": -92,
+  "offset": -97,
   "save": 110,
   "n": 1,
   "confident": false
@@ -36,7 +36,7 @@
   "id": "esso-elgin-mills-1485",
   "label": "ESSO ELGINMILLS",
   "price": 1799,
-  "offset": 18
+  "offset": 13
  },
  "stations": [
   {
@@ -45,7 +45,7 @@
    "city": "Markham",
    "role": "favourite",
    "price": 1689,
-   "offset": -92,
+   "offset": -97,
    "n": 1,
    "seen": "2026-07-28"
   },
@@ -54,7 +54,7 @@
    "label": "ESSO BEAVERCRK",
    "city": "Richmond Hill",
    "role": "favourite",
-   "price": 1694,
+   "price": 1699,
    "offset": -87,
    "n": 1,
    "seen": "2026-07-27"
@@ -64,7 +64,7 @@
    "label": "SHELL HWY7",
    "city": "Richmond Hill",
    "role": "tracked",
-   "price": 1704,
+   "price": 1709,
    "offset": -77,
    "n": 1,
    "seen": "2026-07-27"
@@ -74,7 +74,7 @@
    "label": "SHELL HWY7 MKM",
    "city": "Markham",
    "role": "tracked",
-   "price": 1714,
+   "price": 1719,
    "offset": -66,
    "n": 1,
    "seen": "2026-07-27"
@@ -84,7 +84,7 @@
    "label": "SHELL LESLIE",
    "city": "Richmond Hill",
    "role": "favourite",
-   "price": 1724,
+   "price": 1729,
    "offset": -56,
    "n": 1,
    "seen": "2026-07-27"
@@ -94,27 +94,57 @@
    "label": "PETROCAN HWY7",
    "city": "Markham",
    "role": "tracked",
-   "price": 1734,
+   "price": 1739,
    "offset": -46,
    "n": 1,
    "seen": "2026-07-27"
+  },
+  {
+   "id": "esso-bayview-major-mackenzie-10016",
+   "label": "ESSO BAYVW MAJMAC",
+   "city": "Richmond Hill",
+   "role": "tracked",
+   "price": 1739,
+   "offset": -46,
+   "n": 1,
+   "seen": "2026-07-28"
   },
   {
    "id": "pioneer-major-mac-6375",
    "label": "PIONEER MAJMAC",
    "city": "Markham",
    "role": "tracked",
-   "price": 1754,
+   "price": 1759,
    "offset": -27,
    "n": 1,
    "seen": "2026-07-27"
+  },
+  {
+   "id": "petrocan-major-mac-695",
+   "label": "PETROCAN MAJMAC",
+   "city": "Richmond Hill",
+   "role": "tracked",
+   "price": 1764,
+   "offset": -22,
+   "n": 2,
+   "seen": "2026-07-28"
+  },
+  {
+   "id": "esso-bayview-9999",
+   "label": "ESSO BAYVIEW",
+   "city": "Richmond Hill",
+   "role": "regular",
+   "price": 1769,
+   "offset": -17,
+   "n": 2,
+   "seen": "2026-07-28"
   },
   {
    "id": "esso-yonge-10579",
    "label": "ESSO YONGE 105",
    "city": "Richmond Hill",
    "role": "tracked",
-   "price": 1764,
+   "price": 1769,
    "offset": -17,
    "n": 1,
    "seen": "2026-07-27"
@@ -124,7 +154,7 @@
    "label": "PETROCAN BAYVW",
    "city": "Richmond Hill",
    "role": "tracked",
-   "price": 1764,
+   "price": 1769,
    "offset": -17,
    "n": 1,
    "seen": "2026-07-27"
@@ -134,7 +164,7 @@
    "label": "SHELL YONGE 86",
    "city": "Richmond Hill",
    "role": "tracked",
-   "price": 1764,
+   "price": 1769,
    "offset": -17,
    "n": 1,
    "seen": "2026-07-27"
@@ -144,28 +174,8 @@
    "label": "ESSO WOODBINE",
    "city": "Markham",
    "role": "tracked",
-   "price": 1764,
+   "price": 1769,
    "offset": -17,
-   "n": 1,
-   "seen": "2026-07-27"
-  },
-  {
-   "id": "esso-bayview-9999",
-   "label": "ESSO BAYVIEW",
-   "city": "Richmond Hill",
-   "role": "regular",
-   "price": 1784,
-   "offset": 3,
-   "n": 1,
-   "seen": "2026-07-27"
-  },
-  {
-   "id": "petrocan-major-mac-695",
-   "label": "PETROCAN MAJMAC",
-   "city": "Richmond Hill",
-   "role": "tracked",
-   "price": 1784,
-   "offset": 3,
    "n": 1,
    "seen": "2026-07-27"
   },
@@ -174,7 +184,7 @@
    "label": "ESSO YONGE 128",
    "city": "Richmond Hill",
    "role": "tracked",
-   "price": 1784,
+   "price": 1789,
    "offset": 3,
    "n": 1,
    "seen": "2026-07-27"
@@ -184,7 +194,7 @@
    "label": "SHELL YONGE 111",
    "city": "Richmond Hill",
    "role": "tracked",
-   "price": 1784,
+   "price": 1789,
    "offset": 3,
    "n": 1,
    "seen": "2026-07-27"
@@ -194,7 +204,7 @@
    "label": "ESSO ELGIN MKM",
    "city": "Markham",
    "role": "tracked",
-   "price": 1784,
+   "price": 1789,
    "offset": 3,
    "n": 1,
    "seen": "2026-07-27"
@@ -205,7 +215,7 @@
    "city": "Richmond Hill",
    "role": "home",
    "price": 1799,
-   "offset": 18,
+   "offset": 13,
    "n": 1,
    "seen": "2026-07-28"
   }
@@ -215,13 +225,13 @@
   "days_of_history": 65,
   "observed_days": 55,
   "margin_cad_l": 0.1591,
-  "wholesale_cad_l": 1.1695,
-  "target_cad_l": 1.7659,
-  "rbob_usd_gal": 3.138,
+  "wholesale_cad_l": 1.1866,
+  "target_cad_l": 1.7755,
+  "rbob_usd_gal": 3.1838,
   "usd_cad": 1.4108,
-  "benchmark_cad_l": 1.7807,
-  "station_shift_cad_l": -0.0917,
-  "stations_priced": 17
+  "benchmark_cad_l": 1.7855,
+  "station_shift_cad_l": -0.0965,
+  "stations_priced": 18
  },
  "verdict_hint": "EXPENSIVE",
  "reason_hint": "High, no dip coming"

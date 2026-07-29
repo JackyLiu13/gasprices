@@ -31,6 +31,7 @@ cable.
 make -C tests test              # C verdict engine, 14 shared cases
 python3 backend/test_verdict.py # Python verdict engine, same 14 cases
 python3 backend/test_analytics.py  # dashboard derivations
+python3 backend/test_stations.py   # offset model + the station_prices writes
 make -C tests ui                # renders the LCD layout as ASCII, asserts nothing clips
 make -C tests golden            # same states -> tests/out/*.ppm for the pixel diff
 
@@ -47,7 +48,15 @@ python3 backend/backfill.py                 # one-shot seed from Ontario's surve
 python3 backend/backtest.py --sweep         # tune thresholds against real history
 python3 backend/log_price.py --list         # station ids
 python3 backend/log_price.py 1.709 -s beaver  # log a station price
+python3 backend/log_price.py 1.709 -s beaver --ago 45   # ...seen 45 min ago
+python3 backend/log_price.py --remove -s beaver -t 17:40  # undo a typo
 python3 backend/log_price.py 1.799            # log the regional benchmark
+python3 backend/add_station.py "esso 10016 bayview ave & major mackenzie dr e richmond hill"
+python3 backend/add_station.py "..." --suggest   # print the row, write nothing
+python3 backend/geocode_stations.py --dry-run    # fill lat/lon; one-off, never in CI
+python3 backend/edit_station.py beaver --address "255 E Beaver Creek Rd"
+python3 backend/edit_station.py beaver --rename esso-beaver-crk  # moves prices too
+python3 backend/edit_station.py beaver --remove
 
 # Firmware — note the board options, they are not defaults
 FQBN="esp32:esp32:esp32c6:CDCOnBoot=cdc,FlashSize=8M,PartitionScheme=default_8MB"
@@ -76,12 +85,16 @@ backend/            stdlib-only Python; no pip install anywhere in CI
   verdict.py        Python mirror of verdict.h
   schema.py         the one definition of each CSV header
   analytics.py      pure derivations: margin series, forecast error, dispersion
+  add_station.py    one free-text line -> a stations.csv row, everything derived
+  geocode_stations.py  one-off: fill stations.csv's lat/lon from Nominatim
+  edit_station.py   change/rename/delete a station; rename rewrites both files
   forecast_log.py   read/write forecasts.csv
   db.py             CSVs -> analytics.db (derived, gitignored)
   backfill.py       seed history from Ontario's weekly survey
   backfill_forecasts.py  one-shot: recover published forecasts from git history
   backtest.py       replay history, sweep thresholds
   stations.csv      station registry (edit freely; ids must stay stable)
+                    lat/lon are optional and read by no part of the price model
   station_prices.csv  observations
   history.csv       regional benchmark series
   forecasts.csv     every forward price the model has committed to
@@ -125,6 +138,33 @@ change both, or CI fails.** `vectors.csv` assumes the default config.
 **Never publish a bad file.** `build.py` exits non-zero and leaves the previous
 `docs/data.json` in place rather than publishing a wrong number. A day-old price
 is fine — the firmware knows how to say `STALE`. A wrong price is not.
+
+**Two published files, and the device reads only one.** `docs/data.json` is the
+ESP32's feed and stays small. `docs/stations.json` is the registry plus
+coordinates, for a phone that needs to find a station by where it is; it carries
+no prices. Merging them would cost the device +16% payload twice a day for a
+field the firmware never parses. Coordinates are optional, and **nothing in the
+price model reads them** — an offset is a function of what a station charges,
+not where it is.
+
+**A station observation is `(date, time, station_id)`, and `n` counts days.**
+`station_prices.csv` carries an `HH:MM` in America/Toronto, so a station can be
+priced several times in a day without the second price overwriting the first.
+But the offset is `median(per-day median delta)` and `observations` is a count
+of *distinct dates* — an afternoon spent logging one station is one day's
+evidence about a number that only moves over weeks, and `gasprices.ino` reads
+this same `n` to decide whether to draw the `?`. A blank or absent time reads as
+`12:00`, which is what "not recorded" is spelled as; the seed rows are all noon
+for that reason and are not observations made at noon. **Nothing models time of
+day yet** — there is no day with two prices at one station to fit. The column
+exists so that becomes measurable.
+
+**An id in `station_prices.csv` with no row in `stations.csv` is dropped in
+silence.** `compute_offsets` skips it (`stations.get(sid)` is None) and
+`v_station_priced` inner-joins it away, so hand-editing an id in one file loses
+observations with nothing on screen. `stations.orphans()` is the check;
+`build.py` warns and the dashboard's station panel says so. Use
+`edit_station.py --rename`, which rewrites both files together.
 
 **Windows are date-based, never row-based.** Backfilled survey rows are weekly
 while live rows are daily, so "last N rows" silently means five months in one
@@ -210,6 +250,13 @@ Not done: all 17 stations now have exactly **one** observation each, so every
 offset is still `confident: false` — the `?` on screen. `CONFIDENT_OBSERVATIONS`
 is 3. Logging a second price at any station is the highest-value change
 available; see [`AGENT_NOTES.md`](AGENT_NOTES.md) on why *where* beats *when*.
+The dashboard's **Express log** card exists to make that cheap: address, price,
+minutes-ago, staged in the browser and written as a batch. Nothing else about
+this line has changed — the tooling got better, the data did not.
+
+Also not done, and now at least measurable: **no station has ever been priced
+twice in one day**, so the intraday panel line reads "unmeasured" rather than
+zero, and whether prices here move within a day is an open question.
 
 The regional series is the thinner problem. `history.csv` is 65 rows over 422
 days and **56 of them are Mondays**, because Ontario's survey is weekly — so
