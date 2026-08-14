@@ -1,11 +1,11 @@
 {
  "schema": 2,
  "station": "Richmond Hill, ON",
- "updated": "2026-08-14T20:30:27Z",
- "epoch": 1786739427,
+ "updated": "2026-08-14T20:54:25Z",
+ "epoch": 1786740865,
  "today_cad": 1545,
  "pred": [
-  1545,
+  1546,
   1546,
   1546,
   1546,
@@ -36,7 +36,7 @@
   1530,
   1535,
   1540,
-  1544
+  1545
  ],
  "best": {
   "id": "esso-16th-ave-3010",
@@ -230,11 +230,11 @@
   "days_of_history": 82,
   "observed_days": 57,
   "margin_cad_l": 0.1599,
-  "wholesale_cad_l": 1.0624,
+  "wholesale_cad_l": 1.0625,
   "target_cad_l": 1.6427,
-  "rbob_usd_gal": 2.8984,
+  "rbob_usd_gal": 2.8987,
   "usd_cad": 1.3875,
-  "benchmark_cad_l": 1.6414,
+  "benchmark_cad_l": 1.6415,
   "station_shift_cad_l": -0.0965,
   "stations_priced": 17
  },
