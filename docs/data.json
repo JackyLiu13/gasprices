@@ -1,11 +1,11 @@
 {
  "schema": 2,
  "station": "Richmond Hill, ON",
- "updated": "2026-08-21T20:30:27Z",
- "epoch": 1787344227,
- "today_cad": 1590,
+ "updated": "2026-08-21T20:47:47Z",
+ "epoch": 1787345267,
+ "today_cad": 1589,
  "pred": [
-  1590,
+  1589,
   1590,
   1590,
   1590,
@@ -47,7 +47,7 @@
  "best": {
   "id": "esso-16th-ave-3010",
   "label": "ESSO 16TH AVE",
-  "price": 1590,
+  "price": 1589,
   "offset": -97,
   "save": 110,
   "n": 1,
@@ -65,7 +65,7 @@
    "label": "ESSO 16TH AVE",
    "city": "Markham",
    "role": "favourite",
-   "price": 1590,
+   "price": 1589,
    "offset": -97,
    "n": 1,
    "seen": "2026-07-28"
@@ -75,7 +75,7 @@
    "label": "ESSO BEAVERCRK",
    "city": "Richmond Hill",
    "role": "favourite",
-   "price": 1600,
+   "price": 1599,
    "offset": -87,
    "n": 1,
    "seen": "2026-07-27"
@@ -85,7 +85,7 @@
    "label": "SHELL HWY7",
    "city": "Richmond Hill",
    "role": "tracked",
-   "price": 1610,
+   "price": 1609,
    "offset": -77,
    "n": 1,
    "seen": "2026-07-27"
@@ -95,7 +95,7 @@
    "label": "SHELL HWY7 MKM",
    "city": "Markham",
    "role": "tracked",
-   "price": 1620,
+   "price": 1619,
    "offset": -66,
    "n": 1,
    "seen": "2026-07-27"
@@ -105,7 +105,7 @@
    "label": "SHELL LESLIE",
    "city": "Richmond Hill",
    "role": "favourite",
-   "price": 1630,
+   "price": 1629,
    "offset": -56,
    "n": 1,
    "seen": "2026-07-27"
@@ -115,7 +115,7 @@
    "label": "PETROCAN HWY7",
    "city": "Markham",
    "role": "tracked",
-   "price": 1640,
+   "price": 1639,
    "offset": -46,
    "n": 1,
    "seen": "2026-07-27"
@@ -236,11 +236,11 @@
   "days_of_history": 89,
   "observed_days": 58,
   "margin_cad_l": 0.1617,
-  "wholesale_cad_l": 1.0982,
-  "target_cad_l": 1.6865,
-  "rbob_usd_gal": 3.0257,
+  "wholesale_cad_l": 1.0976,
+  "target_cad_l": 1.6861,
+  "rbob_usd_gal": 3.0239,
   "usd_cad": 1.374,
-  "benchmark_cad_l": 1.686,
+  "benchmark_cad_l": 1.6856,
   "station_shift_cad_l": -0.0965,
   "stations_priced": 17
  },
