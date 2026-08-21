@@ -1,9 +1,9 @@
 {
  "schema": 2,
  "station": "Richmond Hill, ON",
- "updated": "2026-08-20T20:55:08Z",
- "epoch": 1787259308,
- "today_cad": 1589,
+ "updated": "2026-08-21T09:30:27Z",
+ "epoch": 1787304627,
+ "today_cad": 1590,
  "pred": [
   1590,
   1590,
@@ -41,12 +41,13 @@
   1581,
   1587,
   1585,
+  1589,
   1589
  ],
  "best": {
   "id": "esso-16th-ave-3010",
   "label": "ESSO 16TH AVE",
-  "price": 1589,
+  "price": 1590,
   "offset": -97,
   "save": 110,
   "n": 1,
@@ -64,7 +65,7 @@
    "label": "ESSO 16TH AVE",
    "city": "Markham",
    "role": "favourite",
-   "price": 1589,
+   "price": 1590,
    "offset": -97,
    "n": 1,
    "seen": "2026-07-28"
@@ -74,7 +75,7 @@
    "label": "ESSO BEAVERCRK",
    "city": "Richmond Hill",
    "role": "favourite",
-   "price": 1599,
+   "price": 1600,
    "offset": -87,
    "n": 1,
    "seen": "2026-07-27"
@@ -84,7 +85,7 @@
    "label": "SHELL HWY7",
    "city": "Richmond Hill",
    "role": "tracked",
-   "price": 1609,
+   "price": 1610,
    "offset": -77,
    "n": 1,
    "seen": "2026-07-27"
@@ -94,7 +95,7 @@
    "label": "SHELL HWY7 MKM",
    "city": "Markham",
    "role": "tracked",
-   "price": 1619,
+   "price": 1620,
    "offset": -66,
    "n": 1,
    "seen": "2026-07-27"
@@ -104,7 +105,7 @@
    "label": "SHELL LESLIE",
    "city": "Richmond Hill",
    "role": "favourite",
-   "price": 1629,
+   "price": 1630,
    "offset": -56,
    "n": 1,
    "seen": "2026-07-27"
@@ -114,7 +115,7 @@
    "label": "PETROCAN HWY7",
    "city": "Markham",
    "role": "tracked",
-   "price": 1639,
+   "price": 1640,
    "offset": -46,
    "n": 1,
    "seen": "2026-07-27"
@@ -231,15 +232,15 @@
   }
  ],
  "meta": {
-  "level_source": "anchored(2026-08-17, +3d)",
-  "days_of_history": 88,
+  "level_source": "anchored(2026-08-17, +4d)",
+  "days_of_history": 89,
   "observed_days": 58,
   "margin_cad_l": 0.1617,
-  "wholesale_cad_l": 1.0974,
-  "target_cad_l": 1.6868,
-  "rbob_usd_gal": 3.0167,
+  "wholesale_cad_l": 1.0957,
+  "target_cad_l": 1.6865,
+  "rbob_usd_gal": 3.0121,
   "usd_cad": 1.377,
-  "benchmark_cad_l": 1.6857,
+  "benchmark_cad_l": 1.686,
   "station_shift_cad_l": -0.0965,
   "stations_priced": 17
  },
