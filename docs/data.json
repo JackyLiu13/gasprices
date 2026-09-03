@@ -1,8 +1,8 @@
 {
  "schema": 2,
  "station": "Richmond Hill, ON",
- "updated": "2026-09-03T20:30:27Z",
- "epoch": 1788467427,
+ "updated": "2026-09-03T22:41:40Z",
+ "epoch": 1788475300,
  "today_cad": 1625,
  "pred": [
   1618,
@@ -236,9 +236,9 @@
   "days_of_history": 102,
   "observed_days": 60,
   "margin_cad_l": 0.1635,
-  "wholesale_cad_l": 1.1504,
-  "target_cad_l": 1.7066,
-  "rbob_usd_gal": 3.1574,
+  "wholesale_cad_l": 1.1503,
+  "target_cad_l": 1.7065,
+  "rbob_usd_gal": 3.1572,
   "usd_cad": 1.3792,
   "benchmark_cad_l": 1.7215,
   "station_shift_cad_l": -0.0965,
