@@ -1,8 +1,8 @@
 {
  "schema": 2,
  "station": "Richmond Hill, ON",
- "updated": "2026-10-03T23:13:33Z",
- "epoch": 1791069213,
+ "updated": "2026-10-04T09:30:27Z",
+ "epoch": 1791106227,
  "today_cad": 1738,
  "pred": [
   1738,
@@ -14,7 +14,6 @@
  "window_lo": 1587,
  "window_hi": 1776,
  "hist": [
-  1620,
   1623,
   1586,
   1759,
@@ -42,6 +41,7 @@
   1712,
   1751,
   1736,
+  1737,
   1737
  ],
  "best": {
@@ -125,7 +125,7 @@
    "label": "PIONEER MAJMAC",
    "city": "Markham",
    "role": "tracked",
-   "price": 1807,
+   "price": 1808,
    "offset": -27,
    "n": 1,
    "seen": "2026-07-27"
@@ -232,15 +232,15 @@
   }
  ],
  "meta": {
-  "level_source": "anchored(2026-09-28, +5d)",
-  "days_of_history": 132,
+  "level_source": "anchored(2026-09-28, +6d)",
+  "days_of_history": 133,
   "observed_days": 64,
   "margin_cad_l": 0.1718,
   "wholesale_cad_l": 1.2461,
   "target_cad_l": 1.8346,
   "rbob_usd_gal": 3.3124,
   "usd_cad": 1.424,
-  "benchmark_cad_l": 1.834,
+  "benchmark_cad_l": 1.8343,
   "station_shift_cad_l": -0.0965,
   "stations_priced": 17
  },
