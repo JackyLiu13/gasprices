@@ -1,17 +1,17 @@
 {
  "schema": 2,
  "station": "Richmond Hill, ON",
- "updated": "2026-11-08T21:30:26Z",
- "epoch": 1794173426,
- "today_cad": 1528,
+ "updated": "2026-11-08T23:51:50Z",
+ "epoch": 1794181910,
+ "today_cad": 1523,
  "pred": [
-  1527,
-  1526,
-  1526,
-  1526,
-  1525
+  1521,
+  1521,
+  1520,
+  1520,
+  1520
  ],
- "window_lo": 1528,
+ "window_lo": 1523,
  "window_hi": 1718,
  "hist": [
   1677,
@@ -42,12 +42,12 @@
   1548,
   1533,
   1530,
-  1527
+  1522
  ],
  "best": {
   "id": "esso-16th-ave-3010",
   "label": "ESSO 16TH AVE",
-  "price": 1528,
+  "price": 1523,
   "offset": -97,
   "save": 110,
   "n": 1,
@@ -56,7 +56,7 @@
  "regular": {
   "id": "esso-elgin-mills-1485",
   "label": "ESSO ELGINMILLS",
-  "price": 1638,
+  "price": 1633,
   "offset": 13
  },
  "stations": [
@@ -65,7 +65,7 @@
    "label": "ESSO 16TH AVE",
    "city": "Markham",
    "role": "favourite",
-   "price": 1528,
+   "price": 1523,
    "offset": -97,
    "n": 1,
    "seen": "2026-07-28"
@@ -75,7 +75,7 @@
    "label": "ESSO BEAVERCRK",
    "city": "Richmond Hill",
    "role": "favourite",
-   "price": 1538,
+   "price": 1533,
    "offset": -87,
    "n": 1,
    "seen": "2026-07-27"
@@ -85,7 +85,7 @@
    "label": "SHELL HWY7",
    "city": "Richmond Hill",
    "role": "tracked",
-   "price": 1548,
+   "price": 1543,
    "offset": -77,
    "n": 1,
    "seen": "2026-07-27"
@@ -95,7 +95,7 @@
    "label": "SHELL HWY7 MKM",
    "city": "Markham",
    "role": "tracked",
-   "price": 1558,
+   "price": 1553,
    "offset": -66,
    "n": 1,
    "seen": "2026-07-27"
@@ -105,7 +105,7 @@
    "label": "SHELL LESLIE",
    "city": "Richmond Hill",
    "role": "favourite",
-   "price": 1568,
+   "price": 1563,
    "offset": -56,
    "n": 1,
    "seen": "2026-07-27"
@@ -115,7 +115,7 @@
    "label": "PETROCAN HWY7",
    "city": "Markham",
    "role": "tracked",
-   "price": 1578,
+   "price": 1573,
    "offset": -46,
    "n": 1,
    "seen": "2026-07-27"
@@ -125,7 +125,7 @@
    "label": "PIONEER MAJMAC",
    "city": "Markham",
    "role": "tracked",
-   "price": 1598,
+   "price": 1593,
    "offset": -27,
    "n": 1,
    "seen": "2026-07-27"
@@ -135,7 +135,7 @@
    "label": "ESSO YONGE 105",
    "city": "Richmond Hill",
    "role": "tracked",
-   "price": 1608,
+   "price": 1603,
    "offset": -17,
    "n": 1,
    "seen": "2026-07-27"
@@ -145,7 +145,7 @@
    "label": "PETROCAN BAYVW",
    "city": "Richmond Hill",
    "role": "tracked",
-   "price": 1608,
+   "price": 1603,
    "offset": -17,
    "n": 1,
    "seen": "2026-07-27"
@@ -155,7 +155,7 @@
    "label": "SHELL YONGE 86",
    "city": "Richmond Hill",
    "role": "tracked",
-   "price": 1608,
+   "price": 1603,
    "offset": -17,
    "n": 1,
    "seen": "2026-07-27"
@@ -165,7 +165,7 @@
    "label": "ESSO WOODBINE",
    "city": "Markham",
    "role": "tracked",
-   "price": 1608,
+   "price": 1603,
    "offset": -17,
    "n": 1,
    "seen": "2026-07-27"
@@ -175,7 +175,7 @@
    "label": "ESSO BAYVIEW",
    "city": "Richmond Hill",
    "role": "regular",
-   "price": 1628,
+   "price": 1623,
    "offset": 3,
    "n": 1,
    "seen": "2026-07-27"
@@ -185,7 +185,7 @@
    "label": "PETROCAN MAJMAC",
    "city": "Richmond Hill",
    "role": "tracked",
-   "price": 1628,
+   "price": 1623,
    "offset": 3,
    "n": 1,
    "seen": "2026-07-27"
@@ -195,7 +195,7 @@
    "label": "ESSO YONGE 128",
    "city": "Richmond Hill",
    "role": "tracked",
-   "price": 1628,
+   "price": 1623,
    "offset": 3,
    "n": 1,
    "seen": "2026-07-27"
@@ -205,7 +205,7 @@
    "label": "SHELL YONGE 111",
    "city": "Richmond Hill",
    "role": "tracked",
-   "price": 1628,
+   "price": 1623,
    "offset": 3,
    "n": 1,
    "seen": "2026-07-27"
@@ -215,7 +215,7 @@
    "label": "ESSO ELGIN MKM",
    "city": "Markham",
    "role": "tracked",
-   "price": 1628,
+   "price": 1623,
    "offset": 3,
    "n": 1,
    "seen": "2026-07-27"
@@ -225,7 +225,7 @@
    "label": "ESSO ELGINMILLS",
    "city": "Richmond Hill",
    "role": "home",
-   "price": 1638,
+   "price": 1633,
    "offset": 13,
    "n": 1,
    "seen": "2026-07-28"
@@ -236,11 +236,11 @@
   "days_of_history": 168,
   "observed_days": 69,
   "margin_cad_l": 0.2065,
-  "wholesale_cad_l": 1.0318,
-  "target_cad_l": 1.6219,
-  "rbob_usd_gal": 2.7767,
+  "wholesale_cad_l": 1.0296,
+  "target_cad_l": 1.6167,
+  "rbob_usd_gal": 2.7708,
   "usd_cad": 1.4066,
-  "benchmark_cad_l": 1.6243,
+  "benchmark_cad_l": 1.6192,
   "station_shift_cad_l": -0.0965,
   "stations_priced": 17
  },
